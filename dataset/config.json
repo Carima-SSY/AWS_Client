@@ -1,0 +1,10 @@
+{
+    "app-version": "-",
+    "control-board": {
+        "type": "-",
+        "firmware-version": "-"
+    },
+    "temperature": "-",
+    "waterlevel": "-",
+    "engine": "-"
+}
