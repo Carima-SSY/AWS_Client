@@ -32,13 +32,15 @@ class ToIoTCore:
         print("Create MQTT Client Successfully!!")
         
         # TLS 설정
-        self.client.tls_set(ca_certs=self.ca_cert,
+        self.mqttclient.tls_set(ca_certs=self.ca_cert,
                             certfile=self.cert_file,
                             keyfile=self.private_key,
                             tls_version=ssl.PROTOCOL_TLSv1_2)
         
         print("Set TLS (CA Cert / Cert File / Private Key / TLS Version) Successfully!!")
     
+        self.mqttclient.on_connect = self.on_connect
+        
     def on_connect(self, client, userdata, flags, rc):
         # Call when connected to AWS IoT Core
         if rc == 0:
@@ -46,6 +48,9 @@ class ToIoTCore:
             self.client.subscribe(self.topic)
         else:
             print("Connection to ", self.iot_endpoint,"/", self.topic, f": Failure (RC: {rc})")
+        
+    def set_onmessage(self, on_message: function):
+        self.mqttclient.on_message = on_message
         
     def connect(self):
         # Connect AWS IoT Core

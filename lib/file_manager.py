@@ -1,6 +1,9 @@
 import os 
 from PIL import Image
 import base64
+import zipfile
+import io
+import shutil
 
 SLICE_FORMAT = (".slice",".crmaslice",".cws",".cmz")
 class FileManager: 
@@ -119,3 +122,35 @@ class FileManager:
             return True, recipe_dic
         else:
             False, None
+            
+    def add_print_data(self, name: str, encoded_content: str):
+        data_file_path = self.data_folder+"/"+name
+        
+        # base64 디코딩
+        decoded_bytes = base64.b64decode(encoded_content)
+        
+        data_file_path = data_file_path.removesuffix(".zip")
+        
+        with zipfile.ZipFile(io.BytesIO(decoded_bytes)) as zip_ref:
+            zip_ref.extractall(data_file_path)  # 압축 해제할 폴더 지정
+            
+        items = os.listdir(data_file_path)
+        if len(items) == 1 and os.path.isdir(os.path.join(data_file_path, items[0])):
+            inner_folder = os.path.join(data_file_path, items[0])
+            
+            for item in os.listdir(inner_folder):
+                shutil.move(os.path.join(inner_folder, item), data_file_path)
+            os.rmdir(inner_folder)
+            
+    def add_print_recipe(self, name: str, encoded_content: str):
+        if self.device_type is not "X1" or self.device_type is not "DM400":
+            return False
+        
+        recipe_file_path = self.recipe_folder+"/"+name
+
+        # base64 디코딩
+        decoded_content = base64.b64decode(encoded_content)
+
+        #파일로 저장
+        with open(recipe_file_path, 'wb') as f:
+            f.write(decoded_content)

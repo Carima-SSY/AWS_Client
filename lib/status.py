@@ -59,3 +59,7 @@ DEVICE_ALARM = {
     "content": "-",
     "created_date": "0000:00:00:00:00:00"
 }
+
+DEVICE_REQUEST = {
+    "request-list": []
+}

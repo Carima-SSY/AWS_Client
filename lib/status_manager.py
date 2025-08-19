@@ -13,7 +13,8 @@ class StatusManager:
         self.sensor_status = st.SENSOR_STATUS
         self.device_alarm = st.DEVICE_ALARM
         self.device_config = st.DEVICE_CONFIG
-
+        self.device_request = st.DEVICE_REQUEST
+        
         self.create_json_file()
         
     def get_resource_path(self, relative_path: str):
@@ -37,11 +38,12 @@ class StatusManager:
         return True
     
     def create_json_file(self):
-        self.put_json_content('print-status.json', self.print_status)
-        self.put_json_content('device-status.json', self.device_status)
-        self.put_json_content('sensor-status.json', self.sensor_status)
-        self.put_json_content('device-alarm.json', self.device_alarm)
-        self.put_json_content('device-config.json', self.device_config)
+        self.set_json_content('print-status.json', self.print_status)
+        self.set_json_content('device-status.json', self.device_status)
+        self.set_json_content('sensor-status.json', self.sensor_status)
+        self.set_json_content('device-alarm.json', self.device_alarm)
+        self.set_json_content('device-config.json', self.device_config)
+        self.set_json_content('device-request.json', self.device_request)
         
     def delete_json_file(self):
         os.remove('print-status.json')
@@ -49,6 +51,7 @@ class StatusManager:
         os.remove('sensor-status.json')
         os.remove('device-alarm.json')
         os.remove('device-config.json')
+        os.remove('device-request.json')
         
     def get_device_status(self):
         return self.get_json_content('device-status.json')
@@ -73,3 +76,12 @@ class StatusManager:
     
     def set_device_alarm(self, data):
         self.set_json_content('device-alarm.json', data)
+        
+    def add_device_request(self, data):
+        with open(self.request_file, 'r', encoding='utf-8') as file:
+                requestlist_dic = json.load(file)
+                
+        requestlist_dic["request-list"].append(data)
+        
+        with open(self.request_file, 'w', encoding='utf-8') as file:
+            json.dump(requestlist_dic, file, indent=4, ensure_ascii=False)
