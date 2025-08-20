@@ -44,35 +44,35 @@ class ToIoTCore:
     def on_connect(self, client, userdata, flags, rc):
         # Call when connected to AWS IoT Core
         if rc == 0:
-            print("Connection to ", self.iot_endpoint,"/", self.topic, ": Success")
-            self.client.subscribe(self.topic)
+            print("Connection to ", self.endpoint,"/", self.topic, ": Success")
+            self.mqttclient.subscribe(self.topic)
         else:
-            print("Connection to ", self.iot_endpoint,"/", self.topic, f": Failure (RC: {rc})")
+            print("Connection to ", self.endpoint,"/", self.topic, f": Failure (RC: {rc})")
         
-    def set_onmessage(self, on_message: function):
+    def set_onmessage(self, on_message):
         self.mqttclient.on_message = on_message
         
     def connect(self):
         # Connect AWS IoT Core
-        print("Try to Connection to", self.iot_endpoint, "/", self.topic, "...")
-        self.client.connect(self.iot_endpoint, 8883, 60)
-        self.client.loop_start()
+        print("Try to Connection to", self.endpoint, "/", self.topic, "...")
+        self.mqttclient.connect(self.endpoint, 8883, 60)
+        self.mqttclient.loop_start()
     
         time.sleep(5)
         
-        print("Connection End - Endpoint: ", self.iot_endpoint, "/ topic", self.topic)
+        print("Connection End - Endpoint: ", self.endpoint, "/ topic", self.topic)
     
     def publish(self, message):
         # Send MQTT message
         payload = json.dumps(message)
-        self.client.publish(self.topic, payload)
-        print("Sent Message to ", self.iot_endpoint, "/", self.topic, f": {payload}")
+        self.mqttclient.publish(self.topic, payload)
+        print("Sent Message to ", self.endpoint, "/", self.topic, f": {payload}")
     
     def disconnect(self):
         # Disconnect to AWS IoT Core
-        self.client.loop_stop()
-        self.client.disconnect()
-        print("Disconnection to ", self.iot_endpoint,"/", self.topic, ": Success")
+        self.mqttclient.loop_stop()
+        self.mqttclient.disconnect()
+        print("Disconnection to ", self.endpoint,"/", self.topic, ": Success")
         
 class ToAPIG:
     def __init__(self, endpoint):

@@ -14,10 +14,10 @@ class AWSClient:
         self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder)
         
     def request_file_transfer(self, ftype, fname, fcontent):
-        if ftype is "data":
+        if ftype == "data":
             self.client_file.add_print_data(name=fname, encoded_content=fcontent)
             return True
-        elif ftype is "recipe":
+        elif ftype == "recipe":
             self.client_file.add_print_recipe(name=fname, encoded_content=fcontent)
             return True
         else:
@@ -65,9 +65,9 @@ DEVICE_NUMBER = "123456789"
 DATA_FOLDER = "/Users/carima/Documents/TestDir/Datas"
 RECIPE_FOLDER = "/Users/carima/Documents/TestDir/Recipes"
 
-IOT_ENDPOINT = ""        
-CLIENT_ID = "TestClient_v2"
-TOPIC = "test/topic"
+IOT_ENDPOINT = "a3nz0danj2sqa0-ats.iot.ap-northeast-2.amazonaws.com"        
+CLIENT_ID = "C-Hub_TestClient_v2"
+TOPIC = "Status/test"
 CA_CERT = "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_AmazonRootCA1.pem"
 CERT_FILE = "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_certificate.pem.crt"
 PRIVATE_KEY = "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_private.pem.key"
@@ -76,6 +76,7 @@ APIG_ENDPOINT = ""
 
 
 if __name__ == "__main__":
+    aws_client = None
     try: 
         aws_client = AWSClient(
             device_type=DEVICE_TYPE,
@@ -83,14 +84,41 @@ if __name__ == "__main__":
             data_folder=DATA_FOLDER,
             recipe_folder=RECIPE_FOLDER,
             iotcore_endpoint=IOT_ENDPOINT,
+            iotcore_topic=TOPIC,
             iotcore_clientid=CLIENT_ID,  
             iotcore_cacert=CA_CERT,
             iotcore_certfile=CERT_FILE,
             iotcore_privatekey=PRIVATE_KEY,
             apig_endpoint=APIG_ENDPOINT
         )
+        aws_client.iot_core.connect()
         while True:
-            print("Processing...")
-            time.sleep(1)
+            aws_client.iot_core.publish({
+                    "target": ["browser"],
+                    "action": "all-status",
+                    "data": {
+                        "device": aws_client.client_status.get_device_status(),
+                        "sensor": aws_client.client_status.get_sensor_status(),
+                        "print": aws_client.client_status.get_print_status()
+                    }
+                }
+            )
+            
+            if aws_client.client_status.get_device_alarm()["subject"] != "-":
+                aws_client.iot_core.publish({
+                        "target": ["browser"],
+                        "action": "device-alarm",
+                        "data": aws_client.client_status.get_device_alarm() 
+                    }
+                )
+                
+                aws_client.client_status.set_device_alarm({
+                        "subject": "-",
+                        "content": "-",
+                        "created_date": "0000:00:00:00:00:00"
+                    }
+                )
+            
+            time.sleep(10)
     finally:
         aws_client.client_status.delete_json_file()

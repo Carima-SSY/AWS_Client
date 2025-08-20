@@ -143,7 +143,7 @@ class FileManager:
             os.rmdir(inner_folder)
             
     def add_print_recipe(self, name: str, encoded_content: str):
-        if self.device_type is not "X1" or self.device_type is not "DM400":
+        if self.device_type != "X1" or self.device_type != "DM400":
             return False
         
         recipe_file_path = self.recipe_folder+"/"+name

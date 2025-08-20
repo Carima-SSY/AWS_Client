@@ -1,8 +1,7 @@
 import json
 import sys
 import os
-import status as st
-
+from . import status as st
 class StatusManager:
     def __init__(self, device_type, device_number):
         self.device_type = device_type
