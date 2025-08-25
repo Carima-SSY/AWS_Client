@@ -1,7 +1,7 @@
 from lib import status_manager as sm
 from lib import file_manager as fm
 from lib import aws 
-import json, time
+import json, time, threading
 
 class AWSClient: 
     def __init__(self, device_type, device_number, data_folder, recipe_folder, iotcore_endpoint, iotcore_clientid, iotcore_topic, iotcore_cacert, iotcore_certfile, iotcore_privatekey, apig_endpoint):
@@ -75,6 +75,48 @@ PRIVATE_KEY = "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_
 APIG_ENDPOINT = ""
 
 
+def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
+    count = 0
+    while True:
+        if count >= 60: 
+            count = 0
+             
+        iot_client.publish({
+                "target": ["browser"],
+                "action": "all-status",
+                "key": TOPIC,
+                "data": {
+                    "device": aws_client.client_status.get_device_status(),
+                    "sensor": aws_client.client_status.get_sensor_status(),
+                    "print": aws_client.client_status.get_print_status()
+                }
+            }
+        )
+        
+        if client_status.get_device_alarm()["subject"] != "-":
+            iot_client.publish({
+                    "target": ["browser", "storage"],
+                    "action": "device-alarm",
+                    "data": aws_client.client_status.get_device_alarm() 
+                }
+            )
+            
+            client_status.set_device_alarm({
+                    "subject": "-",
+                    "content": "-",
+                    "created_date": "0000:00:00:00:00:00"
+                }
+            )
+            
+        time.sleep(1)
+        count += 1
+
+def file_handler():
+    while True:
+        # Get Print Data
+        # Get Print Recipe
+        time.sleep(1)
+    
 if __name__ == "__main__":
     aws_client = None
     try: 
@@ -92,33 +134,12 @@ if __name__ == "__main__":
             apig_endpoint=APIG_ENDPOINT
         )
         aws_client.iot_core.connect()
-        while True:
-            aws_client.iot_core.publish({
-                    "target": ["browser"],
-                    "action": "all-status",
-                    "data": {
-                        "device": aws_client.client_status.get_device_status(),
-                        "sensor": aws_client.client_status.get_sensor_status(),
-                        "print": aws_client.client_status.get_print_status()
-                    }
-                }
-            )
-            
-            if aws_client.client_status.get_device_alarm()["subject"] != "-":
-                aws_client.iot_core.publish({
-                        "target": ["browser"],
-                        "action": "device-alarm",
-                        "data": aws_client.client_status.get_device_alarm() 
-                    }
-                )
-                
-                aws_client.client_status.set_device_alarm({
-                        "subject": "-",
-                        "content": "-",
-                        "created_date": "0000:00:00:00:00:00"
-                    }
-                )
-            
-            time.sleep(10)
+
+        status_thread = threading.Thread(target=status_handler, args=(aws_client.iot_core, aws_client.client_status))
+        
+        status_thread.start()
+        
+        status_thread.join()
+        
     finally:
         aws_client.client_status.delete_json_file()

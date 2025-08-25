@@ -39,7 +39,11 @@ PRINT_STATUS = {
 
 DEVICE_STATUS = {
     "allow-remote-control": 0,
-    "status": "OFFLINE"
+    "status": "OFFLINE",
+    "selected":{
+        "data": "-",
+        "recipe": "-"
+    }
 }
 
 DEVICE_CONFIG = {
