@@ -111,10 +111,28 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
         time.sleep(1)
         count += 1
 
-def file_handler():
+def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
     while True:
         # Get Print Data
+        current_data = client_file.get_print_data()
+        if client_file.print_data != current_data:
+            client_file.print_data = current_data
+            
+            apig_client.put_file_to_s3(
+                url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put-object", data="print-data"), 
+                data=client_file.print_data
+            )
+            
         # Get Print Recipe
+        current_recipe = client_file.get_print_recipe()
+        if client_file.print_recipe != current_recipe:
+            client_file.print_recipe = current_recipe
+            
+            apig_client.put_file_to_s3(
+                url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put-object", data="print-recipe"),
+                data=client_file.print_recipe
+            )
+            
         time.sleep(1)
     
 if __name__ == "__main__":
@@ -136,10 +154,13 @@ if __name__ == "__main__":
         aws_client.iot_core.connect()
 
         status_thread = threading.Thread(target=status_handler, args=(aws_client.iot_core, aws_client.client_status))
+        file_thread = threading.Thread(target=file_handler, args=(aws_client.api_gateway, aws_client.client_file))
         
         status_thread.start()
+        file_thread.start()
         
         status_thread.join()
+        file_thread.join()
         
     finally:
         aws_client.client_status.delete_json_file()
