@@ -97,7 +97,7 @@ class FileManager:
             name = split_str[len(split_str)-1]
             files = self.get_files(slice)
             preview = self.get_previewimg(files)
-            encoded = self.encode_previewimg(preview, 120)
+            encoded = self.encode_previewimg(preview[0], 120)
             
             print_data[name] = {
                 "preview": encoded,
@@ -105,9 +105,9 @@ class FileManager:
             }  
         return print_data
         
-    def get_print_recipe(self, folder: str):
+    def get_print_recipe(self):
         if self.device_type == "X1" or self.device_type == "DM400":
-            files = self.get_files(folder)
+            files = self.get_files(self.recipe_folder)
             recipe_dic = dict()
             for file in files:
                 if self.is_recipefile(file):
@@ -118,7 +118,7 @@ class FileManager:
             return True, recipe_dic    
         elif self.device_type == "DM4K" or self.device_type == "IML" or self.device_type == "IMDC" or self.device_type == "IMD":
             recipe_dic = dict()
-            recipe_dic["recipe-list"] = self.extract_resins(folder+"/resin.cfg")
+            recipe_dic["recipe-list"] = self.extract_resins(self.recipe_folder+"/resin.cfg")
             return True, recipe_dic
         else:
             False, None

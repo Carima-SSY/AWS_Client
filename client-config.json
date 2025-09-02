@@ -1,0 +1,20 @@
+{
+    "APIGateway":{
+        "end_point": "https://3iu84oc4tc.execute-api.ap-northeast-2.amazonaws.com"
+    },
+    "IoTCore":{
+        "end_point": "a3nz0danj2sqa0-ats.iot.ap-northeast-2.amazonaws.com",
+        "client_id": "C-Hub_TestClient_v2",
+        "ca_cert": "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_AmazonRootCA1.pem",
+        "cert_file": "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_certificate.pem.crt",
+        "private_key": "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_private.pem.key"
+    },
+    "device":{
+        "type": "DM400",
+        "number": "777777"
+    },
+    "dir":{
+        "data": "/Users/carima/Documents/TestDir/Datas",
+        "recipe": "/Users/carima/Documents/TestDir/Recipes"
+    }
+}

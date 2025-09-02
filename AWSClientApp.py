@@ -1,7 +1,7 @@
 from lib import status_manager as sm
 from lib import file_manager as fm
 from lib import aws 
-import json, time, threading
+import json, time, threading, os, sys
 
 class AWSClient: 
     def __init__(self, device_type, device_number, data_folder, recipe_folder, iotcore_endpoint, iotcore_clientid, iotcore_topic, iotcore_cacert, iotcore_certfile, iotcore_privatekey, apig_endpoint):
@@ -58,21 +58,37 @@ class AWSClient:
         elif request == "print-abort":
             self.request_print_abort()
 
+def get_resource_path(relative_path):
+    if getattr(sys, 'frozen', False):
+        # PyInstaller EXE
+        base_path = os.path.dirname(sys.executable)
+    else:
+        # DEVELOP
+        base_path = os.path.abspath(".")
 
-DEVICE_TYPE = "DM400"
-DEVICE_NUMBER = "123456789"
+    return os.path.join(base_path, relative_path)
 
-DATA_FOLDER = "/Users/carima/Documents/TestDir/Datas"
-RECIPE_FOLDER = "/Users/carima/Documents/TestDir/Recipes"
+def get_client_config():
+    with open(get_resource_path('client-config.json'), 'r', encoding='utf-8') as file:
+        config_content = json.load(file) 
+    return config_content 
 
-IOT_ENDPOINT = "a3nz0danj2sqa0-ats.iot.ap-northeast-2.amazonaws.com"        
-CLIENT_ID = "C-Hub_TestClient_v2"
-TOPIC = "Status/test"
-CA_CERT = "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_AmazonRootCA1.pem"
-CERT_FILE = "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_certificate.pem.crt"
-PRIVATE_KEY = "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_private.pem.key"
+client_config = get_client_config()
 
-APIG_ENDPOINT = ""
+DEVICE_TYPE = client_config["device"]["type"]
+DEVICE_NUMBER = client_config["device"]["number"]
+
+DATA_FOLDER = client_config["dir"]["data"]
+RECIPE_FOLDER = client_config["dir"]["recipe"]
+
+IOT_ENDPOINT = client_config["IoTCore"]["end_point"]       
+CLIENT_ID = client_config["IoTCore"]["client_id"]  
+TOPIC = f"{DEVICE_TYPE}/{DEVICE_NUMBER}"
+CA_CERT = client_config["IoTCore"]["ca_cert"]  
+CERT_FILE = client_config["IoTCore"]["cert_file"]  
+PRIVATE_KEY = client_config["IoTCore"]["private_key"]  
+
+APIG_ENDPOINT = client_config["APIGateway"]["end_point"]  
 
 
 def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
@@ -114,25 +130,26 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
 def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
     while True:
         # Get Print Data
+        print("=========================================================\n=========================================================\nCheck Data and Recipe!!!!\n=========================================================\n=========================================================\n")
         current_data = client_file.get_print_data()
         if client_file.print_data != current_data:
             client_file.print_data = current_data
-            
-            apig_client.put_file_to_s3(
-                url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put-object", data="print-data"), 
-                data=client_file.print_data
-            )
-            
+            print("=========================================================\n=========================================================\nPrint Data Updated!!!!\n=========================================================\n=========================================================\n")
+            # apig_client.put_file_to_s3(
+            #     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put-object", data="print-data"), 
+            #     data=client_file.print_data
+            # )
+            print(apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-data"))
         # Get Print Recipe
         current_recipe = client_file.get_print_recipe()
         if client_file.print_recipe != current_recipe:
             client_file.print_recipe = current_recipe
-            
-            apig_client.put_file_to_s3(
-                url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put-object", data="print-recipe"),
-                data=client_file.print_recipe
-            )
-            
+            print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
+            # apig_client.put_file_to_s3(
+            #     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put-object", data="print-recipe"),
+            #     data=client_file.print_recipe
+            # )
+            print(apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe"))
         time.sleep(1)
     
 if __name__ == "__main__":

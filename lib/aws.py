@@ -79,17 +79,17 @@ class ToAPIG:
         self.endpoint = endpoint
 
     def get_presigned_url(self, devtype, devnum, method, data):
-        response = requests.get(f"{self.endpoint}/file/{devtype}/{devnum}/{method}/{data}")
+        response = requests.get(f"{self.endpoint}/api/file/{devtype}/{devnum}/{method}/{data}")
         if response.status_code == 200: return response.json()
         else: return None
         
-    def get_file_from_s3(self, url):
-        response = requests.get(url)
+    def get_file_from_s3(self, get_url):
+        response = requests.get(url=get_url)
         if response.status_code == 200: return response.json()
         else: return None
         
-    def put_file_to_s3(self, url, data):
-        response = requests.put(url=url,json=data)
+    def put_file_to_s3(self, put_url, data):
+        response = requests.put(url=put_url, json=data)
         if response.status_code == 200: return True
         else: return False
 
