@@ -135,21 +135,21 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
         if client_file.print_data != current_data:
             client_file.print_data = current_data
             print("=========================================================\n=========================================================\nPrint Data Updated!!!!\n=========================================================\n=========================================================\n")
-            # apig_client.put_file_to_s3(
-            #     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put-object", data="print-data"), 
-            #     data=client_file.print_data
-            # )
-            print(apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-data"))
+            apig_client.put_file_to_s3(
+                put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-data")["url"], 
+                data=client_file.print_data
+            )
+
         # Get Print Recipe
         current_recipe = client_file.get_print_recipe()
         if client_file.print_recipe != current_recipe:
             client_file.print_recipe = current_recipe
             print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
-            # apig_client.put_file_to_s3(
-            #     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put-object", data="print-recipe"),
-            #     data=client_file.print_recipe
-            # )
-            print(apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe"))
+            apig_client.put_file_to_s3(
+                put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe")["url"],
+                data=client_file.print_recipe
+            )
+
         time.sleep(1)
     
 if __name__ == "__main__":
@@ -178,6 +178,6 @@ if __name__ == "__main__":
         
         status_thread.join()
         file_thread.join()
-        
     finally:
+        aws_client.iot_core.disconnect()
         aws_client.client_status.delete_json_file()
