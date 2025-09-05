@@ -35,6 +35,12 @@ class AWSClient:
             "type": "print-abort"
         })
 
+    def request_select_file(self, type, name):
+        self.client_status.add_device_request({
+            "type": type,
+            "name": name
+        })
+        
     def iotcore_onmessage_handler(self, client, userdata, msg):
         topic = msg.topic
         message = dict(json.loads(msg.payload.decode()))
@@ -46,8 +52,8 @@ class AWSClient:
             return 
         
         if request == "file-transfer":
-            message.get("data")
-            url = self.api_gateway.get_presigned_url(method="get_object",key=data.get("content"))
+            data = message.get("data")
+            url = self.api_gateway.get_presigned_url(method="get_object",key=data.get("key"))
             res = self.api_gateway.get_file_from_s3(url=url)
             self.request_file_transfer(ftype=res.get("type"), fname=res.get("name"), fcontent=res.get("content"))
             
@@ -57,7 +63,15 @@ class AWSClient:
             
         elif request == "print-abort":
             self.request_print_abort()
-
+        
+        elif request == "select-data":
+            data = message.get("data")
+            self.request_select_file(type="select-data",name=data.get("data"))
+        
+        elif request == "select-recipe":
+            data = message.get("data")
+            self.request_select_file(type="select-recipe",name=data.get("recipe"))
+            
 def get_resource_path(relative_path):
     if getattr(sys, 'frozen', False):
         # PyInstaller EXE
@@ -83,7 +97,7 @@ RECIPE_FOLDER = client_config["dir"]["recipe"]
 
 IOT_ENDPOINT = client_config["IoTCore"]["end_point"]       
 CLIENT_ID = client_config["IoTCore"]["client_id"]  
-TOPIC = f"{DEVICE_TYPE}/{DEVICE_NUMBER}"
+TOPIC = f"Status/{DEVICE_TYPE}/{DEVICE_NUMBER}"
 CA_CERT = client_config["IoTCore"]["ca_cert"]  
 CERT_FILE = client_config["IoTCore"]["cert_file"]  
 PRIVATE_KEY = client_config["IoTCore"]["private_key"]  
@@ -100,7 +114,10 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
         iot_client.publish({
                 "target": ["browser"],
                 "action": "all-status",
-                "key": TOPIC,
+                "device": {
+                    "type": DEVICE_TYPE,
+                    "number": DEVICE_NUMBER
+                },
                 "data": {
                     "device": aws_client.client_status.get_device_status(),
                     "sensor": aws_client.client_status.get_sensor_status(),
@@ -113,6 +130,10 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
             iot_client.publish({
                     "target": ["browser", "storage"],
                     "action": "device-alarm",
+                    "device": {
+                        "type": DEVICE_TYPE,
+                        "number": DEVICE_NUMBER
+                    },
                     "data": aws_client.client_status.get_device_alarm() 
                 }
             )
