@@ -80,6 +80,7 @@ class ToAPIG:
 
     def get_presigned_url(self, devtype, devnum, method, data):
         response = requests.get(f"{self.endpoint}/api/file/{devtype}/{devnum}/{method}/{data}")
+        print(response.json())
         if response.status_code == 200: return response.json()
         else: return None
         

@@ -157,7 +157,7 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
             client_file.print_data = current_data
             print("=========================================================\n=========================================================\nPrint Data Updated!!!!\n=========================================================\n=========================================================\n")
             apig_client.put_file_to_s3(
-                put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-data")["url"], 
+                put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-data")["data"]["url"], 
                 data=client_file.print_data
             )
 
@@ -165,10 +165,11 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
         current_recipe = client_file.get_print_recipe()
         if client_file.print_recipe != current_recipe:
             client_file.print_recipe = current_recipe
+            print(f"CURRENT PRINT RECIPE: {client_file.print_recipe[1]}")
             print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
             apig_client.put_file_to_s3(
-                put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe")["url"],
-                data=client_file.print_recipe
+                put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe")["data"]["url"],
+                data=client_file.print_recipe[1]
             )
 
         time.sleep(1)
