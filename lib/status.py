@@ -21,9 +21,19 @@ SENSOR_STATUS = {
         "current": -1,
         "target": -1
     },
+    "pressure":{
+        "connected": 0,
+        "current": -1,
+        "target": -1
+    },
     "engine": {
         "connected": 0,
-        "ledon": 0
+        "ledon": 0,
+        "ledtemp": {
+            "left": -1,
+            "right": -1,
+            "one": -1
+        }
     }
 }
 
@@ -41,7 +51,7 @@ DEVICE_STATUS = {
     "allow-remote-control": 0,
     "status": "OFFLINE",
     "selected":{
-        "data": "-",
+        "data": [],
         "recipe": "-"
     }
 }

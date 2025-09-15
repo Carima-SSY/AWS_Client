@@ -108,71 +108,80 @@ APIG_ENDPOINT = client_config["APIGateway"]["end_point"]
 def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
     count = 0
     while True:
-        if count >= 60: 
-            count = 0
-             
-        iot_client.publish({
-                "target": ["browser"],
-                "action": "all-status",
-                "device": {
-                    "type": DEVICE_TYPE,
-                    "number": DEVICE_NUMBER
-                },
-                "data": {
-                    "device": aws_client.client_status.get_device_status(),
-                    "sensor": aws_client.client_status.get_sensor_status(),
-                    "print": aws_client.client_status.get_print_status()
-                }
-            }
-        )
-        
-        if client_status.get_device_alarm()["subject"] != "-":
+        try:
+            status_target = ["browser"]
+            if count >= 60: 
+                status_target.append("storage")
+                count = 0
+                
             iot_client.publish({
-                    "target": ["browser", "storage"],
-                    "action": "device-alarm",
+                    "target": status_target,
+                    "action": "all-status",
                     "device": {
                         "type": DEVICE_TYPE,
                         "number": DEVICE_NUMBER
                     },
-                    "data": aws_client.client_status.get_device_alarm() 
+                    "data": {
+                        "device": aws_client.client_status.get_device_status(),
+                        "sensor": aws_client.client_status.get_sensor_status(),
+                        "print": aws_client.client_status.get_print_status()
+                    }
                 }
             )
             
-            client_status.set_device_alarm({
-                    "subject": "-",
-                    "content": "-",
-                    "created_date": "0000:00:00:00:00:00"
-                }
-            )
+            if client_status.get_device_alarm()["subject"] != "-":
+                iot_client.publish({
+                        "target": ["browser", "storage"],
+                        "action": "device-alarm",
+                        "device": {
+                            "type": DEVICE_TYPE,
+                            "number": DEVICE_NUMBER
+                        },
+                        "data": aws_client.client_status.get_device_alarm() 
+                    }
+                )
+                
+                client_status.set_device_alarm({
+                        "subject": "-",
+                        "content": "-",
+                        "created_date": "0000:00:00:00:00:00"
+                    }
+                )
+                
+            time.sleep(1)
+            count += 1
+        except Exception as e:
+            print(f"Exception in status_handler: {str(e)}")
             
-        time.sleep(1)
-        count += 1
 
 def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
     while True:
-        # Get Print Data
-        print("=========================================================\n=========================================================\nCheck Data and Recipe!!!!\n=========================================================\n=========================================================\n")
-        current_data = client_file.get_print_data()
-        if client_file.print_data != current_data:
-            client_file.print_data = current_data
-            print("=========================================================\n=========================================================\nPrint Data Updated!!!!\n=========================================================\n=========================================================\n")
-            apig_client.put_file_to_s3(
-                put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-data")["data"]["url"], 
-                data=client_file.print_data
-            )
+        try:
+            # Get Print Data
+            print("=========================================================\n=========================================================\nCheck Data and Recipe!!!!\n=========================================================\n=========================================================\n")
+            current_data = client_file.get_print_data()
+            if client_file.print_data != current_data:
+                client_file.print_data = current_data
+                print("=========================================================\n=========================================================\nPrint Data Updated!!!!\n=========================================================\n=========================================================\n")
+                apig_client.put_file_to_s3(
+                    put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-data")["data"]["url"], 
+                    data=client_file.print_data
+                )
 
-        # Get Print Recipe
-        current_recipe = client_file.get_print_recipe()
-        if client_file.print_recipe != current_recipe:
-            client_file.print_recipe = current_recipe
-            print(f"CURRENT PRINT RECIPE: {client_file.print_recipe[1]}")
-            print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
-            apig_client.put_file_to_s3(
-                put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe")["data"]["url"],
-                data=client_file.print_recipe[1]
-            )
+            # Get Print Recipe
+            current_recipe = client_file.get_print_recipe()
+            if client_file.print_recipe != current_recipe:
+                client_file.print_recipe = current_recipe
+                print(f"CURRENT PRINT RECIPE: {client_file.print_recipe[1]}")
+                print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
+                apig_client.put_file_to_s3(
+                    put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe")["data"]["url"],
+                    data=client_file.print_recipe[1]
+                )
 
-        time.sleep(1)
+            time.sleep(1)
+        except Exception as e:
+            print(f"Exception in file_handler: {str(e)}")
     
 if __name__ == "__main__":
     aws_client = None
