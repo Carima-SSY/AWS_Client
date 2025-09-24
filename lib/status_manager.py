@@ -45,42 +45,42 @@ class StatusManager:
         self.set_json_content('device-request.json', self.device_request)
         
     def delete_json_file(self):
-        os.remove('print-status.json')
-        os.remove('device-status.json')
-        os.remove('sensor-status.json')
-        os.remove('device-alarm.json')
-        os.remove('device-config.json')
-        os.remove('device-request.json')
+        os.remove(self.get_resource_path('print-status.json'))
+        os.remove(self.get_resource_path('device-status.json'))
+        os.remove(self.get_resource_path('sensor-status.json'))
+        os.remove(self.get_resource_path('device-alarm.json'))
+        os.remove(self.get_resource_path("device-config.json"))
+        os.remove(self.get_resource_path("device-request.json"))
         
     def get_device_status(self):
-        return self.get_json_content('device-status.json')
+        return self.get_json_content(self.get_resource_path('device-status.json'))
 
     def get_print_status(self):
-        return self.get_json_content('print-status.json')
+        return self.get_json_content(self.get_resource_path('print-status.json'))
     
     def get_sensor_status(self):
-        return self.get_json_content('sensor-status.json')
+        return self.get_json_content(self.get_resource_path('sensor-status.json'))
     
     def get_device_alarm(self):
-        return self.get_json_content('device-alarm.json')
+        return self.get_json_content(self.get_resource_path('device-alarm.json'))
     
     def set_device_status(self, data):
-        self.set_json_content('device-status.json', data)
+        self.set_json_content(self.get_resource_path('device-status.json'), data)
     
     def set_print_status(self, data):
-        self.set_json_content('print-status.json', data)
+        self.set_json_content(self.get_resource_path('print-status.json'), data)
     
     def set_sensor_status(self, data):
-        self.set_json_content('sensor-status.json', data)
+        self.set_json_content(self.get_resource_path('sensor-status.json'), data)
     
     def set_device_alarm(self, data):
-        self.set_json_content('device-alarm.json', data)
+        self.set_json_content(self.get_resource_path('device-alarm.json'), data)
         
     def add_device_request(self, data):
-        with open("device-request.json", 'r', encoding='utf-8') as file:
+        with open(self.get_resource_path("device-request.json"), 'r', encoding='utf-8') as file:
                 requestlist_dic = json.load(file)
                 
         requestlist_dic["request-list"].append(data)
         
-        with open("device-request.json", 'w', encoding='utf-8') as file:
+        with open(self.get_resource_path("device-request.json"), 'w', encoding='utf-8') as file:
             json.dump(requestlist_dic, file, indent=4, ensure_ascii=False)
