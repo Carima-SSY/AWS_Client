@@ -65,6 +65,7 @@ class AWSClient:
             self.request_print_abort()
         
         elif request == "select-data":
+            print("=========================================================\n=========================================================\nDEVICE REQUEST: SELECT DATA!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
             self.request_select_file(type="select-data",name=data.get("data"))
         

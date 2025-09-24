@@ -77,10 +77,10 @@ class StatusManager:
         self.set_json_content('device-alarm.json', data)
         
     def add_device_request(self, data):
-        with open(self.request_file, 'r', encoding='utf-8') as file:
+        with open("device-request.json", 'r', encoding='utf-8') as file:
                 requestlist_dic = json.load(file)
                 
         requestlist_dic["request-list"].append(data)
         
-        with open(self.request_file, 'w', encoding='utf-8') as file:
+        with open("device-request.json", 'w', encoding='utf-8') as file:
             json.dump(requestlist_dic, file, indent=4, ensure_ascii=False)
