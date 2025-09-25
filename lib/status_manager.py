@@ -64,6 +64,9 @@ class StatusManager:
     def get_device_alarm(self):
         return self.get_json_content(self.get_resource_path('device-alarm.json'))
     
+    def get_device_config(self):
+        return self.get_json_content(self.get_resource_path('device-config.json'))
+    
     def set_device_status(self, data):
         self.set_json_content(self.get_resource_path('device-status.json'), data)
     

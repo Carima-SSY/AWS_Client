@@ -1,0 +1,11 @@
+{
+    "app-version": "v2.11.1",
+    "control-board": {
+        "type": "PCB Control Board",
+        "firmware-version": "DM400_v.11.11"
+    },
+    "temperature": "Autonics TK",
+    "pressure": "Autonics PSM",
+    "waterlevel": "Waterlevel Sensor 12345",
+    "engine": "YOptics NQM+"
+}

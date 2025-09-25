@@ -108,6 +108,7 @@ APIG_ENDPOINT = client_config["APIGateway"]["end_point"]
 
 def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
     count = 0
+    current_devconfig = dict()
     while True:
         try:
             status_target = ["browser"]
@@ -148,7 +149,18 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
                         "created_date": "0000:00:00:00:00:00"
                     }
                 )
-                
+            if current_devconfig != client_status.get_device_config():
+                current_devconfig = client_status.get_device_config()
+                iot_client.publish({
+                        "target": ["browser", "storage"],
+                        "action": "device-config",
+                        "device": {
+                            "type": DEVICE_TYPE,
+                            "number": DEVICE_NUMBER
+                        },
+                        "data": aws_client.client_status.get_device_config() 
+                    }
+                )    
             time.sleep(1)
             count += 1
         except Exception as e:
