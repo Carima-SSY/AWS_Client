@@ -4,17 +4,18 @@
     },
     "IoTCore":{
         "end_point": "a3nz0danj2sqa0-ats.iot.ap-northeast-2.amazonaws.com",
-        "client_id": "C-Hub_TestClient_v2",
+        "client_id": "DM400_888888_TestClient",
         "ca_cert": "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_AmazonRootCA1.pem",
         "cert_file": "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_certificate.pem.crt",
         "private_key": "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_private.pem.key"
     },
     "device":{
         "type": "DM400",
-        "number": 777777
+        "number": 888888
     },
     "dir":{
         "data": "/Users/carima/Documents/TestDir/Datas",
-        "recipe": "/Users/carima/Documents/TestDir/Recipes"
+        "recipe": "/Users/carima/Documents/TestDir/Recipes",
+        "setting": "/Users/carima/Documents/TestDir/Setting"
     }
 }

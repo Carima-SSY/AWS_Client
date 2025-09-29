@@ -4,14 +4,14 @@ from lib import aws
 import json, time, threading, os, sys
 
 class AWSClient: 
-    def __init__(self, device_type, device_number, data_folder, recipe_folder, iotcore_endpoint, iotcore_clientid, iotcore_topic, iotcore_cacert, iotcore_certfile, iotcore_privatekey, apig_endpoint):
+    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, iotcore_endpoint, iotcore_clientid, iotcore_topic, iotcore_cacert, iotcore_certfile, iotcore_privatekey, apig_endpoint):
         self.iot_core = aws.ToIoTCore(endpoint=iotcore_endpoint, client_id=iotcore_clientid, topic=iotcore_topic, ca_cert=iotcore_cacert, cert_file=iotcore_certfile, private_key=iotcore_privatekey)
         self.iot_core.set_onmessage(self.iotcore_onmessage_handler)
         
         self.api_gateway = aws.ToAPIG(endpoint=apig_endpoint)
 
         self.client_status = sm.StatusManager(device_type=device_type, device_number=device_number)
-        self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder)
+        self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder, setting_folder=setting_folder)
         
     def request_file_transfer(self, ftype, fname, fcontent):
         if ftype == "data":
@@ -41,6 +41,13 @@ class AWSClient:
             "name": name
         })
         
+    def request_change_file(self, type, name, content):
+        if self.client_file.device_type == "X1" or self.client_file.device_type == "DM400":
+            if type == "print-recipe":
+                self.client_file.save_json_to_xml(folder=self.client_file.recipe_folder, file=name, data=content, root_name=None)
+            elif type == "device-setting":
+                pass
+        else: pass
     def iotcore_onmessage_handler(self, client, userdata, msg):
         topic = msg.topic
         message = dict(json.loads(msg.payload.decode()))
@@ -72,7 +79,13 @@ class AWSClient:
         elif request == "select-recipe":
             data = message.get("data")
             self.request_select_file(type="select-recipe",name=data.get("recipe"))
-            
+        
+        elif request == "change-recipe":
+            pass
+        
+        elif request == "change-setting":
+            pass
+        
 def get_resource_path(relative_path):
     if getattr(sys, 'frozen', False):
         # PyInstaller EXE
@@ -95,6 +108,7 @@ DEVICE_NUMBER = client_config["device"]["number"]
 
 DATA_FOLDER = client_config["dir"]["data"]
 RECIPE_FOLDER = client_config["dir"]["recipe"]
+SETTING_FOLDER = client_config["dir"]["setting"]
 
 IOT_ENDPOINT = client_config["IoTCore"]["end_point"]       
 CLIENT_ID = client_config["IoTCore"]["client_id"]  
@@ -182,16 +196,27 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                 )
 
             # Get Print Recipe
-            current_recipe = client_file.get_print_recipe()
+            current_recipe = client_file.get_print_recipe()[1]
             if client_file.print_recipe != current_recipe:
                 client_file.print_recipe = current_recipe
-                print(f"CURRENT PRINT RECIPE: {client_file.print_recipe[1]}")
+                print(f"CURRENT PRINT RECIPE: {client_file.print_recipe}")
                 print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
                 apig_client.put_file_to_s3(
                     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe")["data"]["url"],
-                    data=client_file.print_recipe[1]
+                    data=client_file.print_recipe
                 )
 
+            current_setting = client_file.get_device_setting()[1]
+            if client_file.device_setting != current_setting:
+                client_file.device_setting = current_setting
+                print(f"CURRENT DEVICE SETTING: {client_file.device_setting}")
+                print("=========================================================\n=========================================================\nDEVICE SETTING Updated!!!!\n=========================================================\n=========================================================\n")
+                apig_client.put_file_to_s3(
+                    put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="device-setting")["data"]["url"],
+                    data=client_file.device_setting
+                )
+            
+            
             time.sleep(1)
         except Exception as e:
             print(f"Exception in file_handler: {str(e)}")
@@ -204,6 +229,7 @@ if __name__ == "__main__":
             device_number=DEVICE_NUMBER,
             data_folder=DATA_FOLDER,
             recipe_folder=RECIPE_FOLDER,
+            setting_folder=SETTING_FOLDER,
             iotcore_endpoint=IOT_ENDPOINT,
             iotcore_topic=TOPIC,
             iotcore_clientid=CLIENT_ID,  

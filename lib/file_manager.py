@@ -1,21 +1,23 @@
-import os 
+import os,io, json , base64
 from PIL import Image
-import base64
 import zipfile
-import io
 import shutil
+import xmltodict
+from collections import OrderedDict
 
 SLICE_FORMAT = (".slice",".crmaslice",".cws",".cmz")
 class FileManager: 
-    def __init__(self, device_type, device_number, data_folder, recipe_folder):
+    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder):
         self.device_type = device_type
         self.device_number = device_number
         self.data_folder = data_folder
         self.recipe_folder = recipe_folder
+        self.setting_folder = setting_folder
         
         self.print_data = dict()
         self.print_recipe = dict()
-    
+        self.device_setting = dict()
+        
     def is_slicefolder(self, folder: str):
         for sf in SLICE_FORMAT:
             if sf in folder: 
@@ -26,6 +28,15 @@ class FileManager:
         if ".xml" in file or ".cfg" in file:
             return True
         else:
+            return False
+    
+    def is_settingfile(self, file: str):
+        if self.device_type == "X1" or self.device_type == "DM400":
+            if "SaveFile.xml" in file:
+                return True
+            else: 
+                return False
+        else: 
             return False
         
     def get_subfolder(self, folder: str):
@@ -38,27 +49,28 @@ class FileManager:
         preview_list = list()
         
         for file in files:
-            if "preview" in file:
+            if "preview" in str(file).lower():
                 preview_list.append(file)
                 
         return preview_list
 
     def encode_previewimg(self, file: str, width: int):
-        img = Image.open(file)
+        img = Image.open(file).convert("RGBA")
         
         w_percent = width / float(img.size[0])
         new_height = int((float(img.size[1]) * float(w_percent)))
         img_resized = img.resize((width, new_height), Image.LANCZOS)
 
         img_resized.save("output.webp", format="WEBP", quality=80)
-        with open("output.webp", "rb") as image_file:
-            encoded_bytes = base64.b64encode(image_file.read())
-            
-        encoded_str = encoded_bytes.decode('utf-8')
-        
-        os.remove("output.webp")
-        
-        return encoded_str
+        try:
+            with open("output.webp", "rb") as image_file:
+                encoded_bytes = base64.b64encode(image_file.read())
+        finally:
+            try:
+                os.remove("output.webp")
+            except OSError:
+                pass
+        return encoded_bytes.decode("utf-8")
 
     def encode_recipe(self, file: str):
         with open(file, "rb") as rec_file:
@@ -67,7 +79,23 @@ class FileManager:
         encoded_str = encoded_bytes.decode('utf-8')
         
         return encoded_str
+    
+    def convert_xml_to_json(self, file: str):
+        with open(file, 'r', encoding='utf-8') as xml_file:
+            xml_data = xml_file.read()        
+        return xmltodict.parse(xml_data)
+    
+    def save_json_to_xml(self, folder: str, file: str, data: dict, root_name=None):
+        
+        if root_name: final_dict = {root_name: data}
+        else: final_dict = data
 
+        xml_data = xmltodict.unparse(final_dict, full_document=True, pretty=True)    
+        xml_data = xml_data.replace('<?xml version="1.0" encoding="utf-8"?>', '<?xml version="1.0" standalone="yes"?>')
+        
+        with open(f"{folder}/{file}", 'w', encoding='utf-8') as xml_file:
+            xml_file.write(xml_data)
+          
     def extract_resins(self, file: str):
         with open(file, "r", encoding="utf-8", errors="backslashreplace") as cfg_file:
             for line in cfg_file:
@@ -112,7 +140,8 @@ class FileManager:
             for file in files:
                 if self.is_recipefile(file):
                     recipe_dic[file.split('/')[len(file.split('/'))-1]] = {
-                        "content": self.encode_recipe(file),
+                        # "content": self.encode_recipe(file),
+                        "content": self.convert_xml_to_json(file),
                         "size": os.path.getsize(file)
                     }
             return True, recipe_dic    
@@ -121,7 +150,20 @@ class FileManager:
             recipe_dic["recipe-list"] = self.extract_resins(self.recipe_folder+"/resin.cfg")
             return True, recipe_dic
         else:
-            False, None
+            return False, None
+    
+    def get_device_setting(self):
+        if self.device_type == "X1" or self.device_type == "DM400":
+            files = self.get_files(self.setting_folder)
+            setting_dic = dict()
+            for file in files:
+                if self.is_settingfile(file):
+                    setting_dic = self.convert_xml_to_json(file)
+            return True, setting_dic    
+        elif self.device_type == "DM4K" or self.device_type == "IML" or self.device_type == "IMDC" or self.device_type == "IMD":
+            return False, None
+        else:
+            return False, None
             
     def add_print_data(self, name: str, encoded_content: str):
         data_file_path = self.data_folder+"/"+name
