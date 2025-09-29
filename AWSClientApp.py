@@ -45,9 +45,10 @@ class AWSClient:
         if self.client_file.device_type == "X1" or self.client_file.device_type == "DM400":
             if type == "print-recipe":
                 self.client_file.save_json_to_xml(folder=self.client_file.recipe_folder, file=name, data=content, root_name=None)
-            elif type == "device-setting":
-                pass
+            elif type == "device-setting":  
+                self.client_file.save_json_to_xml(folder=self.client_file.setting_folder, file=name, data=content, root_name=None)
         else: pass
+        
     def iotcore_onmessage_handler(self, client, userdata, msg):
         topic = msg.topic
         message = dict(json.loads(msg.payload.decode()))
@@ -77,14 +78,19 @@ class AWSClient:
             self.request_select_file(type="select-data",name=data.get("data"))
         
         elif request == "select-recipe":
+            print("=========================================================\n=========================================================\nDEVICE REQUEST: SELECT RECIPE!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
             self.request_select_file(type="select-recipe",name=data.get("recipe"))
         
         elif request == "change-recipe":
-            pass
-        
+            print("=========================================================\n=========================================================\nDEVICE REQUEST: CHANGE RECIPE!!!!\n=========================================================\n=========================================================\n")
+            data = message.get("data")
+            self.request_change_file(type="print-recipe", name=data.get("name"), content=data.get("content"))
+            
         elif request == "change-setting":
-            pass
+            print("=========================================================\n=========================================================\nDEVICE REQUEST: CHANGE SETTING!!!!\n=========================================================\n=========================================================\n")
+            data = message.get("data")
+            self.request_change_file(type="device-setting", name=data.get("name"), content=data.get("content"))
         
 def get_resource_path(relative_path):
     if getattr(sys, 'frozen', False):
