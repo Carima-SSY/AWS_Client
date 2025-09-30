@@ -1,10 +1,11 @@
 from lib import status_manager as sm
 from lib import file_manager as fm
+from lib import log_manager as lm
 from lib import aws 
 import json, time, threading, os, sys
 
 class AWSClient: 
-    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, iotcore_endpoint, iotcore_clientid, iotcore_topic, iotcore_cacert, iotcore_certfile, iotcore_privatekey, apig_endpoint):
+    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder, iotcore_endpoint, iotcore_clientid, iotcore_topic, iotcore_cacert, iotcore_certfile, iotcore_privatekey, apig_endpoint):
         self.iot_core = aws.ToIoTCore(endpoint=iotcore_endpoint, client_id=iotcore_clientid, topic=iotcore_topic, ca_cert=iotcore_cacert, cert_file=iotcore_certfile, private_key=iotcore_privatekey)
         self.iot_core.set_onmessage(self.iotcore_onmessage_handler)
         
@@ -12,6 +13,7 @@ class AWSClient:
 
         self.client_status = sm.StatusManager(device_type=device_type, device_number=device_number)
         self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder, setting_folder=setting_folder)
+        self.client_log = lm.LogManager(device_type=device_type, device_number=device_number, log_folder=log_folder)
         
     def request_file_transfer(self, ftype, fname, fcontent):
         if ftype == "data":
@@ -66,10 +68,12 @@ class AWSClient:
             self.request_file_transfer(ftype=res.get("type"), fname=res.get("name"), fcontent=res.get("content"))
             
         elif request == "print-start":
+            print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT START!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
             self.request_print_start(data=data.get("data"), recipe=data.get("recipe"))
             
         elif request == "print-abort":
+            print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT ABORT!!!!\n=========================================================\n=========================================================\n")
             self.request_print_abort()
         
         elif request == "select-data":
@@ -115,6 +119,7 @@ DEVICE_NUMBER = client_config["device"]["number"]
 DATA_FOLDER = client_config["dir"]["data"]
 RECIPE_FOLDER = client_config["dir"]["recipe"]
 SETTING_FOLDER = client_config["dir"]["setting"]
+LOG_FOLDER = client_config["dir"]["log"]
 
 IOT_ENDPOINT = client_config["IoTCore"]["end_point"]       
 CLIENT_ID = client_config["IoTCore"]["client_id"]  
@@ -126,12 +131,17 @@ PRIVATE_KEY = client_config["IoTCore"]["private_key"]
 APIG_ENDPOINT = client_config["APIGateway"]["end_point"]  
 
 
-def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
+def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, client_log: lm.LogManager):
     count = 0
     current_devconfig = dict()
+    
+    file_path = client_log.create_log_file()
+    log_count = 0
+         
     while True:
         try:
             status_target = ["browser"]
+            
             if count >= 60: 
                 status_target.append("storage")
                 count = 0
@@ -151,6 +161,22 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
                 }
             )
             
+            if log_count < 3600:
+                client_log.update_log_file(file=file_path,data={
+                    "timestamp": int(time.time()),
+                    "device": aws_client.client_status.get_device_status(),
+                    "sensor": aws_client.client_status.get_sensor_status(),
+                    "print": aws_client.client_status.get_print_status()
+                })            
+            else: 
+                file_path = client_log.create_log_file()
+                client_log.update_log_file(file=file_path,data={
+                    "timestamp": int(time.time()),
+                    "device": aws_client.client_status.get_device_status(),
+                    "sensor": aws_client.client_status.get_sensor_status(),
+                    "print": aws_client.client_status.get_print_status()
+                })
+            
             if client_status.get_device_alarm()["subject"] != "-":
                 iot_client.publish({
                         "target": ["browser", "storage"],
@@ -169,6 +195,7 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
                         "created_date": "0000:00:00:00:00:00"
                     }
                 )
+                
             if current_devconfig != client_status.get_device_config():
                 current_devconfig = client_status.get_device_config()
                 iot_client.publish({
@@ -181,10 +208,13 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager):
                         "data": aws_client.client_status.get_device_config() 
                     }
                 )    
+            
             time.sleep(1)
+            
             count += 1
         except Exception as e:
             print(f"Exception in status_handler: {str(e)}")
+            pass
             
 
 def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
@@ -236,6 +266,7 @@ if __name__ == "__main__":
             data_folder=DATA_FOLDER,
             recipe_folder=RECIPE_FOLDER,
             setting_folder=SETTING_FOLDER,
+            log_folder=LOG_FOLDER,
             iotcore_endpoint=IOT_ENDPOINT,
             iotcore_topic=TOPIC,
             iotcore_clientid=CLIENT_ID,  
@@ -246,7 +277,7 @@ if __name__ == "__main__":
         )
         aws_client.iot_core.connect()
 
-        status_thread = threading.Thread(target=status_handler, args=(aws_client.iot_core, aws_client.client_status))
+        status_thread = threading.Thread(target=status_handler, args=(aws_client.iot_core, aws_client.client_status, aws_client.client_log))
         file_thread = threading.Thread(target=file_handler, args=(aws_client.api_gateway, aws_client.client_file))
         
         status_thread.start()
