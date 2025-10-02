@@ -12,7 +12,7 @@ class AWSClient:
         self.api_gateway = aws.ToAPIG(endpoint=apig_endpoint)
 
         self.client_status = sm.StatusManager(device_type=device_type, device_number=device_number)
-        self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder, setting_folder=setting_folder)
+        self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder, setting_folder=setting_folder, log_folder=log_folder)
         self.client_log = lm.LogManager(device_type=device_type, device_number=device_number, log_folder=log_folder)
         
     def request_file_transfer(self, ftype, fname, fcontent):
@@ -161,7 +161,7 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                 }
             )
             
-            if log_count < 3600:
+            if log_count < 60:
                 client_log.update_log_file(file=file_path,data={
                     "timestamp": int(time.time()),
                     "device": aws_client.client_status.get_device_status(),
@@ -169,6 +169,7 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                     "print": aws_client.client_status.get_print_status()
                 })            
             else: 
+                client_log.save_log_file(file=file_path)
                 file_path = client_log.create_log_file()
                 client_log.update_log_file(file=file_path,data={
                     "timestamp": int(time.time()),
@@ -252,7 +253,16 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                     data=client_file.device_setting
                 )
             
-            
+            valid, current_logs = client_file.get_device_log_updatelist()
+            if valid == True:
+                for current_log in current_logs:
+                    updated_log = client_file.get_device_log(current_log)
+                    print(f"CURRENT DEVICE LOG: {client_file.device_setting}")
+                    print("=========================================================\n=========================================================\nDEVICE LOG Updated!!!!\n=========================================================\n=========================================================\n")
+                    apig_client.put_file_to_s3(
+                        put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="device-log", name=str(current_log).split('.')[0])["data"]["url"],
+                        data=updated_log
+                    )
             time.sleep(1)
         except Exception as e:
             print(f"Exception in file_handler: {str(e)}")

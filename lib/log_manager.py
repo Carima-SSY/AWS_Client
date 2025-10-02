@@ -31,3 +31,12 @@ class LogManager:
 
         with open(file, 'w', encoding='utf-8') as f:
             json.dump(current_data, f, ensure_ascii=False, indent=4)
+
+    def save_log_file(self, file: str):
+        with open(f"{self.log_folder}/device-log.json", 'r', encoding='utf-8') as f:
+            device_log = json.load(f)
+            
+        device_log["updated-list"].append(file)
+
+        with open(f"{self.log_folder}/device-log.json", 'w', encoding='utf-8') as f:
+            json.dump(device_log, f, ensure_ascii=False, indent=4)

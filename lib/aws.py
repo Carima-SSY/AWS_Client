@@ -78,8 +78,11 @@ class ToAPIG:
     def __init__(self, endpoint):
         self.endpoint = endpoint
 
-    def get_presigned_url(self, devtype, devnum, method, data):
-        response = requests.get(f"{self.endpoint}/api/file/{devtype}/{devnum}/{method}/{data}")
+    def get_presigned_url(self, devtype, devnum, method, data, name=None):
+        if name == None:
+            response = requests.get(f"{self.endpoint}/api/file/{devtype}/{devnum}/{method}/{data}")
+        else:
+            response = requests.get(f"{self.endpoint}/api/file/{devtype}/{devnum}/{method}/{data}/{name}")
         print(response.json())
         if response.status_code == 200: return response.json()
         else: return None

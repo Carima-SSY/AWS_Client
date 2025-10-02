@@ -7,12 +7,13 @@ from collections import OrderedDict
 
 SLICE_FORMAT = (".slice",".crmaslice",".cws",".cmz")
 class FileManager: 
-    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder):
+    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder):
         self.device_type = device_type
         self.device_number = device_number
         self.data_folder = data_folder
         self.recipe_folder = recipe_folder
         self.setting_folder = setting_folder
+        self.log_folder = log_folder
         
         self.print_data = dict()
         self.print_recipe = dict()
@@ -164,7 +165,31 @@ class FileManager:
             return False, None
         else:
             return False, None
-            
+    
+    def get_device_log_updatelist(self):
+        try:
+            with open(f"{self.log_folder}/device-log.json", 'r', encoding='utf-8') as f:
+                device_log = json.load(f)
+            return True, device_log["updated-list"]
+        except Exception as e:
+            return False, str(e)
+        
+    def reset_device_log_updatelist(self):
+        try:
+            with open(f"{self.log_folder}/device-log.json", 'w', encoding='utf-8') as f:
+                json.dump({"updated-list": []}, f, ensure_ascii=False, indent=4)
+            return True, "ResetSuccess"
+        except Exception as e:
+            return False, str(e)
+        
+    def get_device_log(self, file: str):
+        try:
+            with open(f"{self.log_folder}/{file}", 'r', encoding='utf-8') as f:
+                device_log = json.load(f)
+            return True, device_log
+        except Exception as e:
+            return False, str(e)
+        
     def add_print_data(self, name: str, encoded_content: str):
         data_file_path = self.data_folder+"/"+name
         
