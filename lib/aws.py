@@ -66,7 +66,7 @@ class ToIoTCore:
         # Send MQTT message
         payload = json.dumps(message)
         self.mqttclient.publish(self.topic, payload)
-        print("Sent Message to ", self.endpoint, "/", self.topic, f": {payload}")
+        # print("Sent Message to ", self.endpoint, "/", self.topic, f": {payload}")
     
     def disconnect(self):
         # Disconnect to AWS IoT Core
@@ -83,7 +83,7 @@ class ToAPIG:
             response = requests.get(f"{self.endpoint}/api/file/{devtype}/{devnum}/{method}/{data}")
         else:
             response = requests.get(f"{self.endpoint}/api/file/{devtype}/{devnum}/{method}/{data}/{name}")
-        print(response.json())
+        # print(response.json())
         if response.status_code == 200: return response.json()
         else: return None
         

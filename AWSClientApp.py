@@ -54,7 +54,7 @@ class AWSClient:
     def iotcore_onmessage_handler(self, client, userdata, msg):
         topic = msg.topic
         message = dict(json.loads(msg.payload.decode()))
-        print (f"Message from {topic} is {message}")
+        # print (f"Message from {topic} is {message}")
         
         request = message.get("request")
         
@@ -68,21 +68,21 @@ class AWSClient:
             self.request_file_transfer(ftype=res.get("type"), fname=res.get("name"), fcontent=res.get("content"))
             
         elif request == "print-start":
-            print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT START!!!!\n=========================================================\n=========================================================\n")
+            # print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT START!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
             self.request_print_start(data=data.get("data"), recipe=data.get("recipe"))
             
         elif request == "print-abort":
-            print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT ABORT!!!!\n=========================================================\n=========================================================\n")
+            # print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT ABORT!!!!\n=========================================================\n=========================================================\n")
             self.request_print_abort()
         
         elif request == "select-data":
-            print("=========================================================\n=========================================================\nDEVICE REQUEST: SELECT DATA!!!!\n=========================================================\n=========================================================\n")
+            # print("=========================================================\n=========================================================\nDEVICE REQUEST: SELECT DATA!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
             self.request_select_file(type="select-data",name=data.get("data"))
         
         elif request == "select-recipe":
-            print("=========================================================\n=========================================================\nDEVICE REQUEST: SELECT RECIPE!!!!\n=========================================================\n=========================================================\n")
+            # print("=========================================================\n=========================================================\nDEVICE REQUEST: SELECT RECIPE!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
             self.request_select_file(type="select-recipe",name=data.get("recipe"))
         
@@ -92,7 +92,7 @@ class AWSClient:
             self.request_change_file(type="print-recipe", name=data.get("name"), content=data.get("content"))
             
         elif request == "change-setting":
-            print("=========================================================\n=========================================================\nDEVICE REQUEST: CHANGE SETTING!!!!\n=========================================================\n=========================================================\n")
+            # print("=========================================================\n=========================================================\nDEVICE REQUEST: CHANGE SETTING!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
             self.request_change_file(type="device-setting", name=data.get("name"), content=data.get("content"))
         
@@ -129,7 +129,6 @@ CERT_FILE = client_config["IoTCore"]["cert_file"]
 PRIVATE_KEY = client_config["IoTCore"]["private_key"]  
 
 APIG_ENDPOINT = client_config["APIGateway"]["end_point"]  
-
 
 def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, client_log: lm.LogManager):
     count = 0
@@ -177,6 +176,7 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                     "sensor": aws_client.client_status.get_sensor_status(),
                     "print": aws_client.client_status.get_print_status()
                 })
+                log_count = 0
             
             if client_status.get_device_alarm()["subject"] != "-":
                 iot_client.publish({
@@ -219,14 +219,16 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
             
 
 def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
+    global current_logfile
+    
     while True:
         try:
             # Get Print Data
-            print("=========================================================\n=========================================================\nCheck Data and Recipe!!!!\n=========================================================\n=========================================================\n")
+            # print("=========================================================\n=========================================================\nCheck Data and Recipe!!!!\n=========================================================\n=========================================================\n")
             current_data = client_file.get_print_data()
             if client_file.print_data != current_data:
                 client_file.print_data = current_data
-                print("=========================================================\n=========================================================\nPrint Data Updated!!!!\n=========================================================\n=========================================================\n")
+                # print("=========================================================\n=========================================================\nPrint Data Updated!!!!\n=========================================================\n=========================================================\n")
                 apig_client.put_file_to_s3(
                     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-data")["data"]["url"], 
                     data=client_file.print_data
@@ -236,8 +238,8 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
             current_recipe = client_file.get_print_recipe()[1]
             if client_file.print_recipe != current_recipe:
                 client_file.print_recipe = current_recipe
-                print(f"CURRENT PRINT RECIPE: {client_file.print_recipe}")
-                print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
+                # print(f"CURRENT PRINT RECIPE: {client_file.print_recipe}")
+                # print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
                 apig_client.put_file_to_s3(
                     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe")["data"]["url"],
                     data=client_file.print_recipe
@@ -246,8 +248,8 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
             current_setting = client_file.get_device_setting()[1]
             if client_file.device_setting != current_setting:
                 client_file.device_setting = current_setting
-                print(f"CURRENT DEVICE SETTING: {client_file.device_setting}")
-                print("=========================================================\n=========================================================\nDEVICE SETTING Updated!!!!\n=========================================================\n=========================================================\n")
+                # print(f"CURRENT DEVICE SETTING: {client_file.device_setting}")
+                # print("=========================================================\n=========================================================\nDEVICE SETTING Updated!!!!\n=========================================================\n=========================================================\n")
                 apig_client.put_file_to_s3(
                     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="device-setting")["data"]["url"],
                     data=client_file.device_setting
@@ -257,8 +259,8 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
             if valid == True:
                 for current_log in current_logs:
                     updated_log = client_file.get_device_log(current_log)
-                    print(f"CURRENT DEVICE LOG: {client_file.device_setting}")
-                    print("=========================================================\n=========================================================\nDEVICE LOG Updated!!!!\n=========================================================\n=========================================================\n")
+                    # print(f"CURRENT DEVICE LOG: {updated_log}")
+                    # print("=========================================================\n=========================================================\nDEVICE LOG Updated!!!!\n=========================================================\n=========================================================\n")
                     apig_client.put_file_to_s3(
                         put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="device-log", name=str(current_log).split('.')[0])["data"]["url"],
                         data=updated_log
