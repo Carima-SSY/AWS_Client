@@ -13,6 +13,7 @@ class StatusManager:
         self.device_alarm = st.DEVICE_ALARM
         self.device_config = st.DEVICE_CONFIG
         self.device_request = st.DEVICE_REQUEST
+        self.print_history = st.PRINT_HISTORY
         
         self.create_json_file()
         
@@ -43,6 +44,7 @@ class StatusManager:
         self.set_json_content('device-alarm.json', self.device_alarm)
         self.set_json_content('device-config.json', self.device_config)
         self.set_json_content('device-request.json', self.device_request)
+        self.set_json_content('print-history.json', self.print_history)
         
     def delete_json_file(self):
         os.remove(self.get_resource_path('print-status.json'))
@@ -51,6 +53,7 @@ class StatusManager:
         os.remove(self.get_resource_path('device-alarm.json'))
         os.remove(self.get_resource_path("device-config.json"))
         os.remove(self.get_resource_path("device-request.json"))
+        os.remove(self.get_resource_path("print-history.json"))
         
     def get_device_status(self):
         return self.get_json_content(self.get_resource_path('device-status.json'))

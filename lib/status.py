@@ -77,3 +77,21 @@ DEVICE_ALARM = {
 DEVICE_REQUEST = {
     "request-list": []
 }
+
+PRINT_HISTORY = {
+    "meta":{
+        "user": "-",
+        "interested": 0,
+        "comment": None
+    },
+    "print":{
+        "data": "-",
+        "recipe": "-",
+        "time": {
+            "start": "0000:00:00:00:00:00",
+            "end": "0000:00:00:00:00:00"
+        }, 
+        "result": "-",
+        "error-rate": 0
+    }
+}

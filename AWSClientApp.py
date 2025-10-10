@@ -20,14 +20,16 @@ class AWSClient:
             self.client_file.add_print_data(name=fname, encoded_content=fcontent)
             return True
         elif ftype == "recipe":
-            self.client_file.add_print_recipe(name=fname, encoded_content=fcontent)
+            print("Recipe is Transfered")
+            self.client_file.save_json_to_xml(folder=self.client_file.recipe_folder, file=fname, data=fcontent)
             return True
         else:
             return False
 
-    def request_print_start(self, data, recipe):
+    def request_print_start(self, user, data, recipe):
         self.client_status.add_device_request({
             "type": "print-start",
+            "user": user,
             "data": data,
             "recipe": recipe
         })
@@ -63,14 +65,14 @@ class AWSClient:
         
         if request == "file-transfer":
             data = message.get("data")
-            url = self.api_gateway.get_presigned_url(method="get_object",key=data.get("key"))
-            res = self.api_gateway.get_file_from_s3(url=url)
+            # url = self.api_gateway.get_presigned_url(method="get_object",key=data.get("key"))
+            res = self.api_gateway.get_file_from_s3(get_url=data.get("url"))
             self.request_file_transfer(ftype=res.get("type"), fname=res.get("name"), fcontent=res.get("content"))
             
         elif request == "print-start":
             # print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT START!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
-            self.request_print_start(data=data.get("data"), recipe=data.get("recipe"))
+            self.request_print_start(user=data.get("user"), data=data.get("data"), recipe=data.get("recipe"))
             
         elif request == "print-abort":
             # print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT ABORT!!!!\n=========================================================\n=========================================================\n")

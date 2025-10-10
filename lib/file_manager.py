@@ -209,15 +209,3 @@ class FileManager:
                 shutil.move(os.path.join(inner_folder, item), data_file_path)
             os.rmdir(inner_folder)
             
-    def add_print_recipe(self, name: str, encoded_content: str):
-        if self.device_type != "X1" or self.device_type != "DM400":
-            return False
-        
-        recipe_file_path = self.recipe_folder+"/"+name
-
-        # base64 디코딩
-        decoded_content = base64.b64decode(encoded_content)
-
-        #파일로 저장
-        with open(recipe_file_path, 'wb') as f:
-            f.write(decoded_content)
