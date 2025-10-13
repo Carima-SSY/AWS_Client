@@ -38,6 +38,7 @@ SENSOR_STATUS = {
 }
 
 PRINT_STATUS = {
+    "user": "-",
     "data-index": -1,
     "data": [],
     "recipe": "-",
@@ -79,19 +80,24 @@ DEVICE_REQUEST = {
 }
 
 PRINT_HISTORY = {
-    "meta":{
+    "name": "-",
+    "database":{
         "user": "-",
         "interested": 0,
-        "comment": None
-    },
-    "print":{
-        "data": "-",
-        "recipe": "-",
+        "print":{
+            "data": "-",
+            "recipe": "-"
+        },
         "time": {
             "start": "0000:00:00:00:00:00",
             "end": "0000:00:00:00:00:00"
         }, 
         "result": "-",
-        "error-rate": 0
+        "error-rate": 0,
+        "comment": []
+    },
+    "storage":{
+        "data": {},
+        "recipe": {}
     }
 }

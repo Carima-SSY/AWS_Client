@@ -82,6 +82,9 @@ class StatusManager:
     def set_device_alarm(self, data):
         self.set_json_content(self.get_resource_path('device-alarm.json'), data)
         
+    def set_print_history(self, data):
+        self.set_json_content(self.get_resource_path('print-history.json'), data)
+    
     def add_device_request(self, data):
         with open(self.get_resource_path("device-request.json"), 'r', encoding='utf-8') as file:
                 requestlist_dic = json.load(file)

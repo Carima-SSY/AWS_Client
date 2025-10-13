@@ -2,7 +2,7 @@ from lib import status_manager as sm
 from lib import file_manager as fm
 from lib import log_manager as lm
 from lib import aws 
-import json, time, threading, os, sys
+import json, time, datetime, threading, os, sys
 
 class AWSClient: 
     def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder, iotcore_endpoint, iotcore_clientid, iotcore_topic, iotcore_cacert, iotcore_certfile, iotcore_privatekey, apig_endpoint):
@@ -94,7 +94,7 @@ class AWSClient:
             self.request_change_file(type="print-recipe", name=data.get("name"), content=data.get("content"))
             
         elif request == "change-setting":
-            # print("=========================================================\n=========================================================\nDEVICE REQUEST: CHANGE SETTING!!!!\n=========================================================\n=========================================================\n")
+            print("=========================================================\n=========================================================\nDEVICE REQUEST: CHANGE SETTING!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
             self.request_change_file(type="device-setting", name=data.get("name"), content=data.get("content"))
         
@@ -132,9 +132,28 @@ PRIVATE_KEY = client_config["IoTCore"]["private_key"]
 
 APIG_ENDPOINT = client_config["APIGateway"]["end_point"]  
 
+def control_print_history(device: dict, print: dict, print_history: dict):
+    if device["status"] == "PRINTING":
+        if print_history["name"] == "-":
+            print_history["name"] = f"{DEVICE_TYPE}-{DEVICE_NUMBER}-{int(time.time())}"
+            print_history["database"]["user"] = print["user"]
+            print_history["database"]["print"]["data"] = print["data"][print["data-index"]]
+            print_history["database"]["print"]["recipe"] = print["recipe"]
+            print_history["database"]["time"]["start"] = datetime.datetime.fromtimestamp(int(time.time())).strftime("%Y:%m:%d:%H:%M:%S")
+        return False
+    elif device["status"] == "PRINTING_FINISH" or device["status"] == "PRINTING_ABORT":
+        if print_history["database"]["time"]["end"] == "0000:00:00:00:00:00":
+            print_history["database"]["time"]["end"] = datetime.datetime.fromtimestamp(int(time.time())).strftime("%Y:%m:%d:%H:%M:%S")
+            return True
+        else: 
+            return False
+    else:
+        return False
 def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, client_log: lm.LogManager):
     count = 0
+    
     current_devconfig = dict()
+    current_printhistory = client_status.print_history
     
     file_path = client_log.create_log_file()
     log_count = 0
@@ -155,12 +174,29 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                         "number": DEVICE_NUMBER
                     },
                     "data": {
-                        "device": aws_client.client_status.get_device_status(),
-                        "sensor": aws_client.client_status.get_sensor_status(),
-                        "print": aws_client.client_status.get_print_status()
+                        "device": client_status.get_device_status(),
+                        "sensor": client_status.get_sensor_status(),
+                        "print": client_status.get_print_status()
                     }
                 }
             )
+            
+            if control_print_history(device=client_status.get_device_status(), print=client_status.get_print_status(), print_history=current_printhistory):
+                client_status.set_print_history(current_printhistory)
+                iot_client.publish({
+                        "target": ["browser", "storage"],
+                        "action": "print-history",
+                        "device": {
+                            "type": DEVICE_TYPE,
+                            "number": DEVICE_NUMBER
+                        },
+                        "data": {
+                            "name": current_printhistory["name"],
+                            "info": current_printhistory["database"]
+                        }
+                    }
+                )
+                current_printhistory = client_status.print_history
             
             if log_count < 60:
                 client_log.update_log_file(file=file_path,data={
@@ -174,9 +210,9 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                 file_path = client_log.create_log_file()
                 client_log.update_log_file(file=file_path,data={
                     "timestamp": int(time.time()),
-                    "device": aws_client.client_status.get_device_status(),
-                    "sensor": aws_client.client_status.get_sensor_status(),
-                    "print": aws_client.client_status.get_print_status()
+                    "device": client_status.get_device_status(),
+                    "sensor": client_status.get_sensor_status(),
+                    "print": client_status.get_print_status()
                 })
                 log_count = 0
             
@@ -188,16 +224,11 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                             "type": DEVICE_TYPE,
                             "number": DEVICE_NUMBER
                         },
-                        "data": aws_client.client_status.get_device_alarm() 
+                        "data": client_status.get_device_alarm() 
                     }
                 )
                 
-                client_status.set_device_alarm({
-                        "subject": "-",
-                        "content": "-",
-                        "created_date": "0000:00:00:00:00:00"
-                    }
-                )
+                client_status.set_device_alarm(client_status.device_alarm)
                 
             if current_devconfig != client_status.get_device_config():
                 current_devconfig = client_status.get_device_config()
@@ -208,7 +239,7 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                             "type": DEVICE_TYPE,
                             "number": DEVICE_NUMBER
                         },
-                        "data": aws_client.client_status.get_device_config() 
+                        "data": client_status.get_device_config() 
                     }
                 )    
             
@@ -221,8 +252,7 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
             
 
 def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
-    global current_logfile
-    
+
     while True:
         try:
             # Get Print Data
@@ -267,6 +297,37 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                         put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="device-log", name=str(current_log).split('.')[0])["data"]["url"],
                         data=updated_log
                     )
+                    
+            valid, current_print = client_file.get_print_history()
+            if valid == True:
+                apig_client.put_file_to_s3(
+                    put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-history", name=current_print["name"])["data"]["url"],
+                    data=current_print["storage"]
+                )
+                
+                client_file.set_print_history(data={
+                        "name": "-",
+                        "database":{
+                            "user": "-",
+                            "interested": 0,
+                            "print":{
+                                "data": "-",
+                                "recipe": "-"
+                            },
+                            "time": {
+                                "start": "0000:00:00:00:00:00",
+                                "end": "0000:00:00:00:00:00"
+                            }, 
+                            "result": "-",
+                            "error-rate": 0,
+                            "comment": []
+                        },
+                        "storage":{
+                            "data": {},
+                            "recipe": {}
+                        }
+                    }
+                )
             time.sleep(1)
         except Exception as e:
             print(f"Exception in file_handler: {str(e)}")

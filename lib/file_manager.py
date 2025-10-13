@@ -1,8 +1,9 @@
-import os,io, json , base64
+import os,io, json , base64, time
 from PIL import Image
 import zipfile
 import shutil
 import xmltodict
+from . import img_process
 from collections import OrderedDict
 
 SLICE_FORMAT = (".slice",".crmaslice",".cws",".cmz")
@@ -189,7 +190,37 @@ class FileManager:
             return True, device_log
         except Exception as e:
             return False, str(e)
+    
+    def get_print_data_blob(self, slice: str):
+        try: 
+            blob = dict(); i=1
+            while True:
+                if os.path.exists(f"{self.data_folder}/{slice}/SEC_{i:04d}.png"):
+                    blob[f"SEC_{i:04d}.png"] = img_process.analyze_dlp_slice_image(f"{self.data_folder}/{slice}/SEC_{i:04d}.png")
+                    i+=1
+                else: break
+            return True, blob
+        except Exception as e:
+            return False, str(e)
         
+    def get_print_history(self):
+        try:
+            with open("print-history.json", 'r', encoding='utf-8') as f:
+                print_history = json.load(f)
+            if print_history["name"] != "-":
+                print_history["storage"]["data"] = self.get_print_data_blob(print_history["database"]["print"]["data"])[1]
+                print_history["storage"]["recipe"] = self.convert_xml_to_json(f"{self.recipe_folder}/{print_history["database"]["print"]["recipe"]}")
+                return True, print_history
+            else:
+                return False, None
+        except Exception as e:
+            return False, str(e)
+    
+    def set_print_history(self, data: dict):
+        with open(f"print-history-{int(time.time())}.json", 'w', encoding='utf-8') as content:
+            json.dump(data, content, ensure_ascii=False, indent=4)
+        return True
+    
     def add_print_data(self, name: str, encoded_content: str):
         data_file_path = self.data_folder+"/"+name
         
