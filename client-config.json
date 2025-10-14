@@ -17,6 +17,7 @@
         "data": "/Users/carima/Documents/TestDir/Datas",
         "recipe": "/Users/carima/Documents/TestDir/Recipes",
         "setting": "/Users/carima/Documents/TestDir/Setting",
-        "log": "/Users/carima/Documents/TestDir/Logs"
+        "log": "/Users/carima/Documents/TestDir/Logs",
+        "history": "/Users/carima/Documents/TestDir/Historys"
     }
 }
