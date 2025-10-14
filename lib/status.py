@@ -93,7 +93,7 @@ PRINT_HISTORY = {
             "end": "0000:00:00:00:00:00"
         }, 
         "result": "-",
-        "error-rate": 0,
+        "error-rate": -1,
         "comment": []
     },
     "storage":{
