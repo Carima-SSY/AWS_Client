@@ -5,14 +5,14 @@ from lib import aws
 import json, time, datetime, threading, os, sys
 
 class AWSClient: 
-    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder, iotcore_endpoint, iotcore_clientid, iotcore_topic, iotcore_cacert, iotcore_certfile, iotcore_privatekey, apig_endpoint):
+    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder, history_folder, iotcore_endpoint, iotcore_clientid, iotcore_topic, iotcore_cacert, iotcore_certfile, iotcore_privatekey, apig_endpoint):
         self.iot_core = aws.ToIoTCore(endpoint=iotcore_endpoint, client_id=iotcore_clientid, topic=iotcore_topic, ca_cert=iotcore_cacert, cert_file=iotcore_certfile, private_key=iotcore_privatekey)
         self.iot_core.set_onmessage(self.iotcore_onmessage_handler)
         
         self.api_gateway = aws.ToAPIG(endpoint=apig_endpoint)
 
-        self.client_status = sm.StatusManager(device_type=device_type, device_number=device_number)
-        self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder, setting_folder=setting_folder, log_folder=log_folder)
+        self.client_status = sm.StatusManager(device_type=device_type, device_number=device_number, history_folder=history_folder)
+        self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder, setting_folder=setting_folder, log_folder=log_folder, history_folder=history_folder)
         self.client_log = lm.LogManager(device_type=device_type, device_number=device_number, log_folder=log_folder)
         
     def request_file_transfer(self, ftype, fname, fcontent):
@@ -122,6 +122,7 @@ DATA_FOLDER = client_config["dir"]["data"]
 RECIPE_FOLDER = client_config["dir"]["recipe"]
 SETTING_FOLDER = client_config["dir"]["setting"]
 LOG_FOLDER = client_config["dir"]["log"]
+HISTORY_FOLDER = client_config["dir"]["history"]
 
 IOT_ENDPOINT = client_config["IoTCore"]["end_point"]       
 CLIENT_ID = client_config["IoTCore"]["client_id"]  
@@ -132,29 +133,54 @@ PRIVATE_KEY = client_config["IoTCore"]["private_key"]
 
 APIG_ENDPOINT = client_config["APIGateway"]["end_point"]  
 
-def control_print_history(device: dict, print: dict, print_history: dict):
-    if device["status"] == "PRINTING":
-        if print_history["name"] == "-":
-            print_history["name"] = f"{DEVICE_TYPE}-{DEVICE_NUMBER}-{int(time.time())}"
-            print_history["database"]["user"] = print["user"]
-            print_history["database"]["print"]["data"] = print["data"][print["data-index"]]
-            print_history["database"]["print"]["recipe"] = print["recipe"]
-            print_history["database"]["time"]["start"] = datetime.datetime.fromtimestamp(int(time.time())).strftime("%Y:%m:%d:%H:%M:%S")
-        return False
-    elif device["status"] == "PRINTING_FINISH" or device["status"] == "PRINTING_ABORT":
-        if print_history["database"]["time"]["end"] == "0000:00:00:00:00:00":
-            print_history["database"]["time"]["end"] = datetime.datetime.fromtimestamp(int(time.time())).strftime("%Y:%m:%d:%H:%M:%S")
-            return True
-        else: 
-            return False
-    else:
-        return False
+def control_print_history(client_status: sm.StatusManager):
+    if client_status.get_device_status()["status"] == "PRINTING":
+        if os.path.exists(get_resource_path("print-history.json")) == False:
+            client_status.create_print_history()
+            current_history = client_status.get_print_history()
+            current_history["name"] = f'{DEVICE_TYPE}-{DEVICE_NUMBER}-{int(time.time())}'
+            current_history["database"]["user"] = client_status.get_print_status()["user"]
+            current_history["database"]["print"]["data"] = client_status.get_print_status()["data"][client_status.get_print_status()["data-index"]]
+            current_history["database"]["print"]["recipe"] = client_status.get_print_status()["recipe"]
+            current_history["database"]["time"]["start"] = datetime.datetime.fromtimestamp(int(time.time())).strftime("%Y:%m:%d:%H:%M:%S")
+
+            client_status.set_print_history(data=current_history)
+        
+        return False, None
+    elif client_status.get_device_status()["status"] == "PRINTING_FINISH" or client_status.get_device_status()["status"] == "PRINTING_ABORT":
+        if os.path.exists(get_resource_path("print-history.json")):
+            current_history = client_status.get_print_history()
+            if current_history["database"]["result"] == "-":
+                current_history["database"]["result"] = client_status.get_device_status()["status"]
+                current_history["database"]["time"]["end"] = datetime.datetime.fromtimestamp(int(time.time())).strftime("%Y:%m:%d:%H:%M:%S")
+        
+                with open(f'{client_status.history_folder}/{current_history["name"]}.json', 'w', encoding='utf-8') as f:
+                    json.dump(current_history, f, ensure_ascii=False, indent=4)
+                    
+                with open(f'{client_status.history_folder}/print-history.json', 'r', encoding='utf-8') as f:
+                    print_history = json.load(f)
+                    
+                print_history['updated-list'].append(f'{current_history["name"]}.json')
+                
+                with open(f'{client_status.history_folder}/print-history.json', 'w', encoding='utf-8') as f:
+                    json.dump(print_history, f, ensure_ascii=False, indent=4)
+                    
+                client_status.delete_print_history()
+                
+                return True, current_history
+            else: return False, None
+        else:
+            return False, None
+    else: 
+        if os.path.exists(get_resource_path("print-history.json")):
+            client_status.delete_print_history()
+        return False, None
+    
 def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, client_log: lm.LogManager):
     count = 0
     
     current_devconfig = dict()
-    current_printhistory = client_status.print_history
-    
+
     file_path = client_log.create_log_file()
     log_count = 0
          
@@ -181,8 +207,9 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                 }
             )
             
-            if control_print_history(device=client_status.get_device_status(), print=client_status.get_print_status(), print_history=current_printhistory):
-                client_status.set_print_history(current_printhistory)
+            valid, data = control_print_history(client_status=client_status)
+            if valid == True:
+                print(f"NEW PRINT HISTORY: {data}")
                 iot_client.publish({
                         "target": ["browser", "storage"],
                         "action": "print-history",
@@ -191,12 +218,11 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                             "number": DEVICE_NUMBER
                         },
                         "data": {
-                            "name": current_printhistory["name"],
-                            "info": current_printhistory["database"]
+                            "name": data["name"],
+                            "info": data["database"]
                         }
                     }
                 )
-                current_printhistory = client_status.print_history
             
             if log_count < 60:
                 client_log.update_log_file(file=file_path,data={
@@ -298,36 +324,16 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                         data=updated_log
                     )
                     
-            valid, current_print = client_file.get_print_history()
+            valid, current_historys = client_file.get_print_history_updatelist()
             if valid == True:
-                apig_client.put_file_to_s3(
-                    put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-history", name=current_print["name"])["data"]["url"],
-                    data=current_print["storage"]
-                )
-                
-                client_file.set_print_history(data={
-                        "name": "-",
-                        "database":{
-                            "user": "-",
-                            "interested": 0,
-                            "print":{
-                                "data": "-",
-                                "recipe": "-"
-                            },
-                            "time": {
-                                "start": "0000:00:00:00:00:00",
-                                "end": "0000:00:00:00:00:00"
-                            }, 
-                            "result": "-",
-                            "error-rate": 0,
-                            "comment": []
-                        },
-                        "storage":{
-                            "data": {},
-                            "recipe": {}
-                        }
-                    }
-                )
+                for current_history in current_historys:
+                    _, updated_history = client_file.get_print_history(current_history)
+                    apig_client.put_file_to_s3(
+                        put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-history", name=updated_history["name"])["data"]["url"],
+                        data=updated_history["storage"]
+                    )
+                client_file.reset_print_history_updatelist()
+            
             time.sleep(1)
         except Exception as e:
             print(f"Exception in file_handler: {str(e)}")
@@ -342,6 +348,7 @@ if __name__ == "__main__":
             recipe_folder=RECIPE_FOLDER,
             setting_folder=SETTING_FOLDER,
             log_folder=LOG_FOLDER,
+            history_folder=HISTORY_FOLDER,
             iotcore_endpoint=IOT_ENDPOINT,
             iotcore_topic=TOPIC,
             iotcore_clientid=CLIENT_ID,  

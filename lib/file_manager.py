@@ -1,4 +1,4 @@
-import os,io, json , base64, time
+import os, io, json , base64, time
 from PIL import Image
 import zipfile
 import shutil
@@ -8,13 +8,14 @@ from collections import OrderedDict
 
 SLICE_FORMAT = (".slice",".crmaslice",".cws",".cmz")
 class FileManager: 
-    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder):
+    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder, history_folder):
         self.device_type = device_type
         self.device_number = device_number
         self.data_folder = data_folder
         self.recipe_folder = recipe_folder
         self.setting_folder = setting_folder
         self.log_folder = log_folder
+        self.history_folder = history_folder
         
         self.print_data = dict()
         self.print_recipe = dict()
@@ -203,16 +204,34 @@ class FileManager:
         except Exception as e:
             return False, str(e)
         
-    def get_print_history(self):
+    def get_print_history_updatelist(self):
         try:
-            with open("print-history.json", 'r', encoding='utf-8') as f:
+            with open(f"{self.history_folder}/print-history.json", 'r', encoding='utf-8') as f:
                 print_history = json.load(f)
-            if print_history["name"] != "-":
-                print_history["storage"]["data"] = self.get_print_data_blob(print_history["database"]["print"]["data"])[1]
-                print_history["storage"]["recipe"] = self.convert_xml_to_json(f"{self.recipe_folder}/{print_history["database"]["print"]["recipe"]}")
-                return True, print_history
-            else:
-                return False, None
+            return True, print_history["updated-list"]
+        except Exception as e:
+            return False, str(e)
+        
+    def reset_print_history_updatelist(self):
+        try:
+            with open(f"{self.history_folder}/print-history.json", 'w', encoding='utf-8') as f:
+                json.dump({"updated-list": []}, f, ensure_ascii=False, indent=4)
+            return True, "ResetSuccess"
+        except Exception as e:
+            return False, str(e)
+    
+    def get_print_history(self, file: str):
+        try:
+            with open(f"{self.history_folder}/{file}", 'r', encoding='utf-8') as f:
+                print_history = json.load(f)
+
+            print_history["storage"]["data"] = self.get_print_data_blob(print_history["database"]["print"]["data"])[1]
+            print_history["storage"]["recipe"] = self.convert_xml_to_json(f"{self.recipe_folder}/{print_history['database']['print']['recipe']}")
+            
+            with open(f"{self.history_folder}/{file}", 'w', encoding='utf-8') as f:
+                json.dump(print_history, f, ensure_ascii=False, indent=4)
+                
+            return True, print_history
         except Exception as e:
             return False, str(e)
     
@@ -251,4 +270,4 @@ class FileManager:
 
         #파일로 저장
         with open(recipe_file_path, 'wb') as f:
-            f.write(decoded_content)
+            f.write(decoded_content)    

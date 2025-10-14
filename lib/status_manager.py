@@ -3,7 +3,7 @@ import sys
 import os
 from . import status as st
 class StatusManager:
-    def __init__(self, device_type, device_number):
+    def __init__(self, device_type, device_number, history_folder):
         self.device_type = device_type
         self.device_number = device_number
         
@@ -14,6 +14,8 @@ class StatusManager:
         self.device_config = st.DEVICE_CONFIG
         self.device_request = st.DEVICE_REQUEST
         self.print_history = st.PRINT_HISTORY
+        
+        self.history_folder = history_folder
         
         self.create_json_file()
         
@@ -44,8 +46,7 @@ class StatusManager:
         self.set_json_content('device-alarm.json', self.device_alarm)
         self.set_json_content('device-config.json', self.device_config)
         self.set_json_content('device-request.json', self.device_request)
-        self.set_json_content('print-history.json', self.print_history)
-        
+
     def delete_json_file(self):
         os.remove(self.get_resource_path('print-status.json'))
         os.remove(self.get_resource_path('device-status.json'))
@@ -53,7 +54,8 @@ class StatusManager:
         os.remove(self.get_resource_path('device-alarm.json'))
         os.remove(self.get_resource_path("device-config.json"))
         os.remove(self.get_resource_path("device-request.json"))
-        os.remove(self.get_resource_path("print-history.json"))
+        if os.path.exists(self.get_resource_path("print-history.json")):
+            os.remove(self.get_resource_path("print-history.json"))
         
     def get_device_status(self):
         return self.get_json_content(self.get_resource_path('device-status.json'))
@@ -82,9 +84,20 @@ class StatusManager:
     def set_device_alarm(self, data):
         self.set_json_content(self.get_resource_path('device-alarm.json'), data)
         
-    def set_print_history(self, data):
-        self.set_json_content(self.get_resource_path('print-history.json'), data)
+        
+    def create_print_history(self):
+        self.set_json_content('print-history.json', self.print_history)
+        
+    def get_print_history(self):
+        return self.get_json_content(self.get_resource_path('print-history.json'))
     
+    def set_print_history(self, data):
+        self.set_json_content('print-history.json', data)
+        
+    def delete_print_history(self):
+        if os.path.exists(self.get_resource_path("print-history.json")):
+            os.remove(self.get_resource_path("print-history.json"))
+        
     def add_device_request(self, data):
         with open(self.get_resource_path("device-request.json"), 'r', encoding='utf-8') as file:
                 requestlist_dic = json.load(file)
@@ -92,4 +105,4 @@ class StatusManager:
         requestlist_dic["request-list"].append(data)
         
         with open(self.get_resource_path("device-request.json"), 'w', encoding='utf-8') as file:
-            json.dump(requestlist_dic, file, indent=4, ensure_ascii=False)
+            json.dump(requestlist_dic, file, indent=4, ensure_ascii=False)  
