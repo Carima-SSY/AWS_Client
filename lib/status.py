@@ -83,7 +83,7 @@ PRINT_HISTORY = {
     "name": "-",
     "database":{
         "user": "-",
-        "interested": 0,
+        "interested": [],
         "print":{
             "data": "-",
             "recipe": "-"
