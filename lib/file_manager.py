@@ -164,7 +164,7 @@ class FileManager:
                     setting_dic = self.convert_xml_to_json(file)
             return True, setting_dic    
         elif self.device_type == "DM4K" or self.device_type == "IML" or self.device_type == "IMDC" or self.device_type == "IMD":
-            return False, None
+            return True, dict()
         else:
             return False, None
     
