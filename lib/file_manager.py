@@ -64,15 +64,21 @@ class FileManager:
         new_height = int((float(img.size[1]) * float(w_percent)))
         img_resized = img.resize((width, new_height), Image.LANCZOS)
 
-        img_resized.save("output.webp", format="WEBP", quality=80)
-        try:
-            with open("output.webp", "rb") as image_file:
-                encoded_bytes = base64.b64encode(image_file.read())
-        finally:
-            try:
-                os.remove("output.webp")
-            except OSError:
-                pass
+        # img_resized.save("output.webp", format="WEBP", quality=80)
+        # try:
+        #     with open("output.webp", "rb") as image_file:
+        #         encoded_bytes = base64.b64encode(image_file.read())
+        # finally:
+        #     try:
+        #         os.remove("output.webp")
+        #     except OSError:
+        #         pass
+        
+        byte_io = io.BytesIO() #  create in-memory file object
+        img_resized.save(byte_io, format="WEBP", quality=80) # save img to file object
+        byte_io.seek(0) # change location to start to read file
+        encoded_bytes = base64.b64encode(byte_io.read()) # base 64 encoding
+        
         return encoded_bytes.decode("utf-8")
 
     def encode_recipe(self, file: str):
