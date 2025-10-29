@@ -245,9 +245,13 @@ class FileManager:
 
             files = self.get_files(print_history["database"]["print"]["data"])
             
-            print_history["storage"]["data"]["idx"] = self.get_idx_file(files)
-            print_history["storage"]["data"]["gcode"] = self.get_gcode_file(files)
-            print_history["storage"]["data"]["slices"] = self.get_print_data_blob(print_history["database"]["print"]["data"])[1]
+            # ================================================================================
+            # Modified Code: Add idx and gcode file content in print-history.json
+            # Finished: False
+            print_history["storage"]["data"]["idx"] = self.get_idx_file(files) # Add function that convert idx content to json 
+            print_history["storage"]["data"]["gcode"] = self.get_gcode_file(files) # Add function that convert gcode content to json 
+            print_history["storage"]["data"]["slices"] = self.get_print_data_blob(print_history["database"]["print"]["data"])[1] 
+            # ================================================================================
             
             print_history["storage"]["recipe"] = self.convert_xml_to_json(f"{self.recipe_folder}/{print_history['database']['print']['recipe']}")
             
