@@ -275,7 +275,6 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
         except Exception as e:
             print(f"Exception in status_handler: {str(e)}")
             pass
-            
 
 def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
 

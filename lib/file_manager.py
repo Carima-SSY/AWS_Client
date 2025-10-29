@@ -56,7 +56,19 @@ class FileManager:
                 preview_list.append(file)
                 
         return preview_list
-
+    
+    def get_idx_file(self, files: list):
+        for file in files:
+            if ".idx" in str(file).lower():
+                return file
+        return None
+    
+    def get_gcode_file(self, files: list):
+        for file in files:
+            if ".gcode" in str(file).lower():
+                return file
+        return None
+    
     def encode_previewimg(self, file: str, width: int):
         img = Image.open(file).convert("RGBA")
         
@@ -197,18 +209,6 @@ class FileManager:
             return True, device_log
         except Exception as e:
             return False, str(e)
-    
-    def get_print_data_blob(self, slice: str):
-        try: 
-            blob = dict(); i=1
-            while True:
-                if os.path.exists(f"{self.data_folder}/{slice}/SEC_{i:04d}.png"):
-                    blob[f"SEC_{i:04d}.png"] = img_process.analyze_dlp_slice_image(f"{self.data_folder}/{slice}/SEC_{i:04d}.png")
-                    i+=1
-                else: break
-            return True, blob
-        except Exception as e:
-            return False, str(e)
         
     def get_print_history_updatelist(self):
         try:
@@ -226,12 +226,29 @@ class FileManager:
         except Exception as e:
             return False, str(e)
     
+    def get_print_data_blob(self, slice: str):
+        try: 
+            blob = dict(); i=1
+            while True:
+                if os.path.exists(f"{self.data_folder}/{slice}/SEC_{i:04d}.png"):
+                    blob[f"SEC_{i:04d}.png"] = img_process.analyze_dlp_slice_image(f"{self.data_folder}/{slice}/SEC_{i:04d}.png")
+                    i+=1
+                else: break
+            return True, blob
+        except Exception as e:
+            return False, str(e)
+        
     def get_print_history(self, file: str):
         try:
             with open(f"{self.history_folder}/{file}", 'r', encoding='utf-8') as f:
                 print_history = json.load(f)
 
-            print_history["storage"]["data"] = self.get_print_data_blob(print_history["database"]["print"]["data"])[1]
+            files = self.get_files(print_history["database"]["print"]["data"])
+            
+            print_history["storage"]["data"]["idx"] = self.get_idx_file(files)
+            print_history["storage"]["data"]["gcode"] = self.get_gcode_file(files)
+            print_history["storage"]["data"]["slices"] = self.get_print_data_blob(print_history["database"]["print"]["data"])[1]
+            
             print_history["storage"]["recipe"] = self.convert_xml_to_json(f"{self.recipe_folder}/{print_history['database']['print']['recipe']}")
             
             with open(f"{self.history_folder}/{file}", 'w', encoding='utf-8') as f:
