@@ -230,7 +230,8 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                     "device": aws_client.client_status.get_device_status(),
                     "sensor": aws_client.client_status.get_sensor_status(),
                     "print": aws_client.client_status.get_print_status()
-                })            
+                })    
+                log_count += 1        
             else: 
                 client_log.save_log_file(file=file_path)
                 file_path = client_log.create_log_file()

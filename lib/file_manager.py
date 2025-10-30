@@ -142,8 +142,6 @@ class FileManager:
         
         print_data = dict() 
         for slice in slices:
-            # split_str = str(slice).split('/')
-            # name = split_str[len(split_str)-1]
             name = os.path.basename(slice)
             files = self.get_files(slice)
             preview = self.get_previewimg(files)
@@ -161,11 +159,6 @@ class FileManager:
             recipe_dic = dict()
             for file in files:
                 if self.is_recipefile(file):
-                    # recipe_dic[file.split('/')[len(file.split('/'))-1]] = {
-                    #     # "content": self.encode_recipe(file),
-                    #     "content": self.convert_xml_to_json(file),
-                    #     "size": os.path.getsize(file)
-                    # }
                     recipe_dic[os.path.basename(file)] = {
                         "content": self.convert_xml_to_json(file),
                         "size": os.path.getsize(file)
