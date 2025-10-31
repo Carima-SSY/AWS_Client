@@ -225,6 +225,7 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                 )
             
             if log_count < 60:
+                
                 client_log.update_log_file(file=file_path,data={
                     "timestamp": int(time.time()),
                     "device": aws_client.client_status.get_device_status(),
@@ -233,6 +234,8 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                 })    
                 log_count += 1        
             else: 
+                log_count = 0
+                print("=========================================================\n=========================================================\nDEVICE LOG: SAVE AND UPDATE!!!!\n=========================================================\n=========================================================\n")
                 client_log.save_log_file(file=file_path)
                 file_path = client_log.create_log_file()
                 client_log.update_log_file(file=file_path,data={
@@ -241,7 +244,7 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                     "sensor": client_status.get_sensor_status(),
                     "print": client_status.get_print_status()
                 })
-                log_count = 0
+                # log_count = 0
             
             if client_status.get_device_alarm()["subject"] != "-":
                 iot_client.publish({
@@ -316,17 +319,21 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
             valid, current_logs = client_file.get_device_log_updatelist()
             if valid == True:
                 for current_log in current_logs:
-                    updated_log = client_file.get_device_log(current_log)
+                    valid, updated_log = client_file.get_device_log(current_log)
                     # print(f"CURRENT DEVICE LOG: {updated_log}")
                     # print("=========================================================\n=========================================================\nDEVICE LOG Updated!!!!\n=========================================================\n=========================================================\n")
-                    apig_client.put_file_to_s3(
-                        put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="device-log", name=str(current_log).split('.')[0])["data"]["url"],
-                        data=updated_log
-                    )
+                    if valid == True:
+                        print(f"CURRENT DEVICE LOG: {updated_log}")
+                        apig_client.put_file_to_s3(
+                            put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="device-log", name=str(current_log).split('.')[0])["data"]["url"],
+                            data=updated_log
+                        )
+                client_file.reset_device_log_updatelist()
                     
             valid, current_historys = client_file.get_print_history_updatelist()
             if valid == True:
                 for current_history in current_historys:
+                    print(f"CURRENT HISTORY: {current_history}")
                     _, updated_history = client_file.get_print_history(current_history)
                     apig_client.put_file_to_s3(
                         put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-history", name=updated_history["name"])["data"]["url"],

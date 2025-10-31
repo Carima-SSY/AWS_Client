@@ -1,4 +1,4 @@
-import json,time
+import json,time, os
 
 class LogManager:
     def __init__(self, device_type, device_number, log_folder):
@@ -36,7 +36,7 @@ class LogManager:
         with open(f"{self.log_folder}/device-log.json", 'r', encoding='utf-8') as f:
             device_log = json.load(f)
             
-        device_log["updated-list"].append(file)
+        device_log["updated-list"].append(os.path.basename(file))
 
         with open(f"{self.log_folder}/device-log.json", 'w', encoding='utf-8') as f:
             json.dump(device_log, f, ensure_ascii=False, indent=4)
