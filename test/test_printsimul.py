@@ -12,7 +12,7 @@ def write_json(file: str, data: dict):
     return True
 
 write_json(file='../device-status.json',data={
-    "allow-remote-control": 0,
+    "allow-remote-control": 1,
     "status": "PRINTING",
     "selected":{
         "data": ["test.crmaslice"],
@@ -35,7 +35,7 @@ time.sleep(10)
 
 write_json(file='../device-status.json',data={
     "allow-remote-control": 0,
-    "status": "PRINTING_FINISH",
+    "status": "PRINTING_ABORT",
     "selected":{
         "data": ["test.crmaslice"],
         "recipe": "sample.xml"

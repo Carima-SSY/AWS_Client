@@ -241,14 +241,16 @@ class FileManager:
             with open(f"{self.history_folder}/{file}", 'r', encoding='utf-8') as f:
                 print_history = json.load(f)
 
-            files = self.get_files(f"{self.data_folder}/{print_history["database"]["print"]["data"]}")
+            #files = self.get_files(f"{self.data_folder}/{print_history["database"]["print"]["data"]}")
             # print(f"FILES TYPE:{type(files)}")
             # ================================================================================
             # Modified Code: Add idx and gcode file content in print-history.json
             # Finished: False
-            print_history["storage"]["data"]["idx"] = self.get_idx_file(files) # Add function that convert idx content to json 
-            print_history["storage"]["data"]["gcode"] = self.get_gcode_file(files) # Add function that convert gcode content to json 
+            
+            # print_history["storage"]["data"]["idx"] = self.get_idx_file(files) # Add function that convert idx content to json 
+            # print_history["storage"]["data"]["gcode"] = self.get_gcode_file(files) # Add function that convert gcode content to json 
             # print(f"IDX: {print_history["storage"]["data"]["idx"]} / GCODE: {print_history["storage"]["data"]["gcode"]}")
+            
             print_history["storage"]["data"]["slices"] = self.get_print_data_blob(print_history["database"]["print"]["data"])[1] 
             # ================================================================================
             

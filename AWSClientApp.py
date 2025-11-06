@@ -51,6 +51,11 @@ class AWSClient:
                 self.client_file.save_json_to_xml(folder=self.client_file.recipe_folder, file=name, data=content, root_name=None)
             elif type == "device-setting":  
                 self.client_file.save_json_to_xml(folder=self.client_file.setting_folder, file=name, data=content, root_name=None)
+        elif self.client_file.device_type == "DM400":
+            if type == "print-recipe":
+                self.client_file.save_json_to_xml(folder=self.client_file.recipe_folder, file=name, data=content, root_name=None)
+            elif type == "device-setting":  
+                self.client_file.save_json_to_xml(folder=self.client_file.setting_folder, file=name, data=content, root_name=None)
         else: pass
         
     def iotcore_onmessage_handler(self, client, userdata, msg):
