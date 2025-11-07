@@ -188,7 +188,6 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
 
     file_path = client_log.create_log_file()
     log_count = 0
-         
     while True:
         try:
             status_target = ["browser"]
@@ -196,6 +195,8 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
             if count >= 60: 
                 status_target.append("storage")
                 count = 0
+            elif client_status.get_device_status()['status'] in ["PRINTING_FINISH", "PRINTING_ABORT", "OFFLINE"]:
+                status_target.append("storage")
                 
             iot_client.publish({
                     "target": status_target,
