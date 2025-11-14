@@ -89,6 +89,7 @@ class ToAPIG:
         
     def get_file_from_s3(self, get_url):
         response = requests.get(url=get_url)
+        print(f"RESPONSE OF GET FILE:{response}")
         if response.status_code == 200: return response.json()
         else: return None
         
