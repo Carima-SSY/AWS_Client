@@ -230,7 +230,7 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                     }
                 )
             
-            if log_count < 60:
+            if log_count < 3600:
                 
                 client_log.update_log_file(file=file_path,data={
                     "timestamp": int(time.time()),
@@ -306,7 +306,7 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
             if client_file.print_recipe != current_recipe:
                 client_file.print_recipe = current_recipe
                 # print(f"CURRENT PRINT RECIPE: {client_file.print_recipe}")
-                # print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
+                print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
                 apig_client.put_file_to_s3(
                     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe")["data"]["url"],
                     data=client_file.print_recipe
