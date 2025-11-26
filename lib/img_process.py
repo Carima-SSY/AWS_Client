@@ -3,8 +3,12 @@ import numpy as np
 from collections import Counter
 
 def analyze_dlp_slice_image(image_path):
-    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    
+    #print(f"analyze_dlp_slice_image: {image_path}")
+    # img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    with open(image_path, 'rb') as f:
+        bytes_data = f.read()
+    np_array = np.frombuffer(bytes_data, np.uint8)
+    img = cv2.imdecode(np_array, cv2.IMREAD_GRAYSCALE)
     if img is None:
         print(f"Error: No such file in directory / Path: {image_path}")
         return False

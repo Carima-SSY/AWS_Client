@@ -1,7 +1,7 @@
 from lib import status_manager as sm
 from lib import file_manager as fm
 from lib import log_manager as lm
-from lib import aws 
+from lib import aws
 import json, time, datetime, threading, os, sys
 
 class AWSClient: 
@@ -287,7 +287,7 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
             pass
 
 def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
-
+    
     while True:
         try:
             # Get Print Data
@@ -311,7 +311,7 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe")["data"]["url"],
                     data=client_file.print_recipe
                 )
-
+                
             current_setting = client_file.get_device_setting()[1]
             if client_file.device_setting != current_setting:
                 client_file.device_setting = current_setting
@@ -321,7 +321,7 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="device-setting")["data"]["url"],
                     data=client_file.device_setting
                 )
-            
+                
             valid, current_logs = client_file.get_device_log_updatelist()
             if valid == True:
                 for current_log in current_logs:
@@ -335,12 +335,13 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                             data=updated_log
                         )
                 client_file.reset_device_log_updatelist()
-                    
+                
             valid, current_historys = client_file.get_print_history_updatelist()
             if valid == True:
                 for current_history in current_historys:
-                    print(f"CURRENT HISTORY: {current_history}")
+                    #print(f"CURRENT HISTORY: {current_history}")
                     _, updated_history = client_file.get_print_history(current_history)
+                    #print(f"UPDATED HISTORY: {updated_history}")
                     apig_client.put_file_to_s3(
                         put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-history", name=updated_history["name"])["data"]["url"],
                         data=updated_history["storage"]

@@ -226,18 +226,23 @@ class FileManager:
     
     def get_print_data_blob(self, slice: str):
         try: 
+            #print(f"get_print_data_blob: {slice}")
             blob = dict(); i=1
             while True:
+                # print(f"{self.data_folder}/{slice}/SEC_{i:04d}.png")
                 if os.path.exists(f"{self.data_folder}/{slice}/SEC_{i:04d}.png"):
                     blob[f"SEC_{i:04d}.png"] = img_process.analyze_dlp_slice_image(f"{self.data_folder}/{slice}/SEC_{i:04d}.png")
                     i+=1
-                else: break
+                else: 
+                    #print("\n==========================================\nget_print_data_blob END\n==========================================\n")
+                    break
             return True, blob
         except Exception as e:
             return False, str(e)
         
     def get_print_history(self, file: str):
         try:
+            print(f"get_print_history: {file}")
             with open(f"{self.history_folder}/{file}", 'r', encoding='utf-8') as f:
                 print_history = json.load(f)
 
@@ -253,7 +258,6 @@ class FileManager:
             
             print_history["storage"]["data"]["slices"] = self.get_print_data_blob(print_history["database"]["print"]["data"])[1] 
             # ================================================================================
-            
             print_history["storage"]["recipe"] = self.convert_xml_to_json(f"{self.recipe_folder}/{print_history['database']['print']['recipe']}")
             
             with open(f"{self.history_folder}/{file}", 'w', encoding='utf-8') as f:
