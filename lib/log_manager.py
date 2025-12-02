@@ -1,4 +1,4 @@
-import json,time, os
+import json, time, os
 
 class LogManager:
     def __init__(self, device_type, device_number, log_folder):

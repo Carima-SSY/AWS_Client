@@ -1,6 +1,7 @@
 from lib import status_manager as sm
 from lib import file_manager as fm
 from lib import log_manager as lm
+from lib import cam_manager as cam
 from lib import aws
 import json, time, datetime, threading, os, sys
 
@@ -9,11 +10,14 @@ class AWSClient:
         self.iot_core = aws.ToIoTCore(endpoint=iotcore_endpoint, client_id=iotcore_clientid, topic=iotcore_topic, ca_cert=iotcore_cacert, cert_file=iotcore_certfile, private_key=iotcore_privatekey)
         self.iot_core.set_onmessage(self.iotcore_onmessage_handler)
         
+        self.cam_core = aws.ToIoTCore(endpoint=iotcore_endpoint, client_id=f"{iotcore_clientid}-Cam", topic=f"{iotcore_topic}/Cam", ca_cert=iotcore_cacert, cert_file=iotcore_certfile, private_key=iotcore_privatekey)
+        
         self.api_gateway = aws.ToAPIG(endpoint=apig_endpoint)
 
         self.client_status = sm.StatusManager(device_type=device_type, device_number=device_number, history_folder=history_folder)
         self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder, setting_folder=setting_folder, log_folder=log_folder, history_folder=history_folder)
         self.client_log = lm.LogManager(device_type=device_type, device_number=device_number, log_folder=log_folder)
+        self.client_cam = cam.CamManager()
         
     def request_file_transfer(self, ftype, fname, fcontent):
         if ftype == "data":
@@ -180,7 +184,28 @@ def control_print_history(client_status: sm.StatusManager):
         if os.path.exists(get_resource_path("print-history.json")):
             client_status.delete_print_history()
         return False, None
-    
+
+def cam_handler(cam_client: aws.ToIoTCore, cam_status: cam.CamManager):
+    while True:
+        try:
+            cam_client.publish({
+                    "target": ["browser"],
+                    "action": "cam-image",
+                    "device": {
+                        "type": DEVICE_TYPE, 
+                        "number": DEVICE_NUMBER
+                    },
+                    "data": {
+                        "encoded": cam_status.capture_image()
+                    }
+                    
+                }
+            )
+            time.sleep(1)
+        except Exception as e:
+            print(f"Exception in cam_handler: {str(e)}")
+            pass
+
 def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, client_log: lm.LogManager):
     count = 0
     
@@ -191,11 +216,11 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
     while True:
         try:
             status_target = ["browser"]
-            
+                     
             if count >= 60: 
                 status_target.append("storage")
                 count = 0
-            elif client_status.get_device_status()['status'] in ["PRINTING_FINISH", "PRINTING_ABORT", "OFFLINE"]:
+            elif client_status.get_device_status()['status'] == "OFFLINE":
                 status_target.append("storage")
                 
             iot_client.publish({
@@ -372,15 +397,21 @@ if __name__ == "__main__":
             apig_endpoint=APIG_ENDPOINT
         )
         aws_client.iot_core.connect()
-
+        aws_client.cam_core.connect()   
+        
         status_thread = threading.Thread(target=status_handler, args=(aws_client.iot_core, aws_client.client_status, aws_client.client_log))
         file_thread = threading.Thread(target=file_handler, args=(aws_client.api_gateway, aws_client.client_file))
+        cam_thread = threading.Thread(target=cam_handler, args=(aws_client.cam_core, aws_client.client_cam))
         
         status_thread.start()
         file_thread.start()
+        cam_thread.start()
         
         status_thread.join()
         file_thread.join()
+        cam_thread.join()
+
     finally:
         aws_client.iot_core.disconnect()
         aws_client.client_status.delete_json_file()
+        aws_client.cam_core.disconnect()
