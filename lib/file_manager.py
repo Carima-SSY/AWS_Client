@@ -281,24 +281,24 @@ class FileManager:
                 json.dump(print_history, f, ensure_ascii=False, indent=4)
             
             valid, video_path = self.get_timelapse_video(folder=print_history["name"])
-            # if valid == True:
-            #     with open(video_path, "rb") as video_file:
-            #         video_data = video_file.read()
-            #         encoded_bytes = base64.b64encode(video_data)
-            #         encoded_string = encoded_bytes.decode('utf-8')
-            #     print_history["storage"]["timelapse"] = encoded_string
-            # else:
-            #     print_history["storage"]["timelapse"] = None
+            if valid == True:
+                with open(video_path, "rb") as video_file:
+                    video_data = video_file.read()
+                    encoded_bytes = base64.b64encode(video_data)
+                    encoded_string = encoded_bytes.decode('utf-8')
+                print_history["storage"]["timelapse"] = encoded_string
+            else:
+                print_history["storage"]["timelapse"] = None
             
             valid, zip_path = self.get_preview_zip(folder=print_history["name"])
-            # if valid == True:
-            #     with open(zip_path, "rb") as zip_file:
-            #         zip_data = zip_file.read()
-            #         encoded_bytes = base64.b64encode(zip_data)
-            #         encoded_string = encoded_bytes.decode('utf-8')
-            #     print_history["storage"]["preview-zip"] = encoded_string
-            # else:
-            #     print_history["storage"]["preview-zip"] = None
+            if valid == True:
+                with open(zip_path, "rb") as zip_file:
+                    zip_data = zip_file.read()
+                    encoded_bytes = base64.b64encode(zip_data)
+                    encoded_string = encoded_bytes.decode('utf-8')
+                print_history["storage"]["preview-zip"] = encoded_string
+            else:
+                print_history["storage"]["preview-zip"] = None
             
             return True, print_history
         except Exception as e:

@@ -1,0 +1,8 @@
+{
+    "allow-remote-control": 1,
+    "status": "PRINTING_FINISH",
+    "selected": {
+        "data": ["test.crmaslice"],
+        "recipe": "Default.xml"
+    }
+}
