@@ -30,14 +30,22 @@ class StatusManager:
         return os.path.join(base_path, relative_path)
 
     def get_json_content(self, file: str):
-        with open(self.get_resource_path(file), 'r', encoding='utf-8') as content:
-            json_content = json.load(content) 
-        return json_content 
+        try: 
+            with open(self.get_resource_path(file), 'r', encoding='utf-8') as content:
+                json_content = json.load(content) 
+            return json_content 
+        except Exception as e:
+            print(f"Exception in get_json_content ->{file}: {e}")
+            return None
     
     def set_json_content(self, file: str, data: dict):
-        with open(self.get_resource_path(file), 'w', encoding='utf-8') as content:
-            json.dump(data, content, ensure_ascii=False, indent=4)
-        return True
+        try:
+            with open(self.get_resource_path(file), 'w', encoding='utf-8') as content:
+                json.dump(data, content, ensure_ascii=False, indent=4)
+            return True
+        except Exception as e:
+            print(f"Exception in set_json_content ->{file}: {e}")
+            return False
     
     def create_json_file(self):
         self.set_json_content('print-status.json', self.print_status)
@@ -83,8 +91,7 @@ class StatusManager:
     
     def set_device_alarm(self, data):
         self.set_json_content(self.get_resource_path('device-alarm.json'), data)
-        
-        
+           
     def create_print_history(self):
         self.set_json_content('print-history.json', self.print_history)
         

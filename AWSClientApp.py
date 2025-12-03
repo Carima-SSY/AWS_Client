@@ -6,7 +6,7 @@ from lib import aws
 import json, time, datetime, threading, os, sys
 
 class AWSClient: 
-    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder, history_folder, iotcore_endpoint, iotcore_clientid, iotcore_topic, iotcore_cacert, iotcore_certfile, iotcore_privatekey, apig_endpoint):
+    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder, history_folder, cam_folder, iotcore_endpoint, iotcore_clientid, iotcore_topic, iotcore_cacert, iotcore_certfile, iotcore_privatekey, apig_endpoint):
         self.iot_core = aws.ToIoTCore(endpoint=iotcore_endpoint, client_id=iotcore_clientid, topic=iotcore_topic, ca_cert=iotcore_cacert, cert_file=iotcore_certfile, private_key=iotcore_privatekey)
         self.iot_core.set_onmessage(self.iotcore_onmessage_handler)
         
@@ -15,9 +15,9 @@ class AWSClient:
         self.api_gateway = aws.ToAPIG(endpoint=apig_endpoint)
 
         self.client_status = sm.StatusManager(device_type=device_type, device_number=device_number, history_folder=history_folder)
-        self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder, setting_folder=setting_folder, log_folder=log_folder, history_folder=history_folder)
+        self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder, setting_folder=setting_folder, log_folder=log_folder, history_folder=history_folder, cam_folder=cam_folder)
         self.client_log = lm.LogManager(device_type=device_type, device_number=device_number, log_folder=log_folder)
-        self.client_cam = cam.CamManager()
+        self.client_cam = cam.CamManager(camera_index=0, width=1920, height=1080, fps=30, webp_quality=50, cam_folder=cam_folder)
         
     def request_file_transfer(self, ftype, fname, fcontent):
         if ftype == "data":
@@ -132,6 +132,7 @@ RECIPE_FOLDER = client_config["dir"]["recipe"]
 SETTING_FOLDER = client_config["dir"]["setting"]
 LOG_FOLDER = client_config["dir"]["log"]
 HISTORY_FOLDER = client_config["dir"]["history"]
+CAM_FOLDER = client_config["dir"]["cam"]
 
 IOT_ENDPOINT = client_config["IoTCore"]["end_point"]       
 CLIENT_ID = client_config["IoTCore"]["client_id"]  
@@ -142,6 +143,8 @@ PRIVATE_KEY = client_config["IoTCore"]["private_key"]
 
 APIG_ENDPOINT = client_config["APIGateway"]["end_point"]  
 
+CAPTURE_INTERVAL = 10
+SAVE_INTERVAL = 1
 def control_print_history(client_status: sm.StatusManager):
     if client_status.get_device_status()["status"] == "PRINTING":
         if os.path.exists(get_resource_path("print-history.json")) == False:
@@ -185,9 +188,24 @@ def control_print_history(client_status: sm.StatusManager):
             client_status.delete_print_history()
         return False, None
 
-def cam_handler(cam_client: aws.ToIoTCore, cam_status: cam.CamManager):
+def cam_handler(cam_client: aws.ToIoTCore, client_status: sm.StatusManager, client_cam: cam.CamManager):
+    delay_time = CAPTURE_INTERVAL
     while True:
         try:
+            if client_status.get_device_status()['status'] == "PRINTING" and client_status.get_print_history() is not None:
+                if client_cam.exists_cam_folder(sub_folder=f"{client_status.get_print_history()['name']}") == False:
+                    client_cam.create_sub_folder(sub_folder=f"{client_status.get_print_history()['name']}")
+                encoded_image = client_cam.save_image(sub_folder=f"{client_status.get_print_history()['name']}")
+                delay_time = SAVE_INTERVAL
+                
+            elif client_status.get_device_status()['status'] == "OFFLINE": 
+                encoded_image = None
+                delay_time = CAPTURE_INTERVAL
+            
+            else:
+                encoded_image = client_cam.capture_image()
+                delay_time = CAPTURE_INTERVAL
+
             cam_client.publish({
                     "target": ["browser"],
                     "action": "cam-image",
@@ -196,12 +214,13 @@ def cam_handler(cam_client: aws.ToIoTCore, cam_status: cam.CamManager):
                         "number": DEVICE_NUMBER
                     },
                     "data": {
-                        "encoded": cam_status.capture_image()
+                        "encoded": encoded_image
                     }
                     
                 }
             )
-            time.sleep(1)
+            
+            time.sleep(delay_time)
         except Exception as e:
             print(f"Exception in cam_handler: {str(e)}")
             pass
@@ -331,7 +350,7 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
             if client_file.print_recipe != current_recipe:
                 client_file.print_recipe = current_recipe
                 # print(f"CURRENT PRINT RECIPE: {client_file.print_recipe}")
-                print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
+                # print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")
                 apig_client.put_file_to_s3(
                     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe")["data"]["url"],
                     data=client_file.print_recipe
@@ -365,7 +384,7 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
             if valid == True:
                 for current_history in current_historys:
                     #print(f"CURRENT HISTORY: {current_history}")
-                    _, updated_history = client_file.get_print_history(current_history)
+                    _, updated_history =client_file.get_print_history(current_history)
                     #print(f"UPDATED HISTORY: {updated_history}")
                     apig_client.put_file_to_s3(
                         put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-history", name=updated_history["name"])["data"]["url"],
@@ -388,6 +407,7 @@ if __name__ == "__main__":
             setting_folder=SETTING_FOLDER,
             log_folder=LOG_FOLDER,
             history_folder=HISTORY_FOLDER,
+            cam_folder=CAM_FOLDER,
             iotcore_endpoint=IOT_ENDPOINT,
             iotcore_topic=TOPIC,
             iotcore_clientid=CLIENT_ID,  
@@ -401,7 +421,7 @@ if __name__ == "__main__":
         
         status_thread = threading.Thread(target=status_handler, args=(aws_client.iot_core, aws_client.client_status, aws_client.client_log))
         file_thread = threading.Thread(target=file_handler, args=(aws_client.api_gateway, aws_client.client_file))
-        cam_thread = threading.Thread(target=cam_handler, args=(aws_client.cam_core, aws_client.client_cam))
+        cam_thread = threading.Thread(target=cam_handler, args=(aws_client.cam_core, aws_client.client_status, aws_client.client_cam))
         
         status_thread.start()
         file_thread.start()

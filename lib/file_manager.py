@@ -8,7 +8,7 @@ from collections import OrderedDict
 
 SLICE_FORMAT = (".slice",".crmaslice",".cws",".cmz")
 class FileManager: 
-    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder, history_folder):
+    def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder, history_folder, cam_folder):
         self.device_type = device_type
         self.device_number = device_number
         self.data_folder = data_folder
@@ -16,6 +16,7 @@ class FileManager:
         self.setting_folder = setting_folder
         self.log_folder = log_folder
         self.history_folder = history_folder
+        self.cam_folder = cam_folder
         
         self.print_data = dict()
         self.print_recipe = dict()
@@ -239,6 +240,22 @@ class FileManager:
             return True, blob
         except Exception as e:
             return False, str(e)
+    
+    def get_timelapse_video(self, folder: str):
+        try:
+            img_process.create_timelapse(src_folder=f"{self.cam_folder}/{folder}", output_file=f"{self.cam_folder}/{folder}/{folder}.mp4", fps=30)
+            return True, f"{self.cam_folder}/{folder}/{folder}.mp4"
+        except Exception as e:
+            print(f"get_timelapse_video error: {e}")
+            return False, None
+        
+    def get_preview_zip(self, folder: str):
+        try:
+            img_process.create_preview_zip(src_folder=f"{self.cam_folder}/{folder}", output_file=f"{self.cam_folder}/{folder}/preview_images")
+            return True, f"{self.cam_folder}/{folder}/preview_images.zip"
+        except Exception as e:
+            print(f"get_preview_zip error: {e}")
+            return False, None
         
     def get_print_history(self, file: str):
         try:
@@ -262,7 +279,27 @@ class FileManager:
             
             with open(f"{self.history_folder}/{file}", 'w', encoding='utf-8') as f:
                 json.dump(print_history, f, ensure_ascii=False, indent=4)
-                
+            
+            valid, video_path = self.get_timelapse_video(folder=print_history["name"])
+            # if valid == True:
+            #     with open(video_path, "rb") as video_file:
+            #         video_data = video_file.read()
+            #         encoded_bytes = base64.b64encode(video_data)
+            #         encoded_string = encoded_bytes.decode('utf-8')
+            #     print_history["storage"]["timelapse"] = encoded_string
+            # else:
+            #     print_history["storage"]["timelapse"] = None
+            
+            valid, zip_path = self.get_preview_zip(folder=print_history["name"])
+            # if valid == True:
+            #     with open(zip_path, "rb") as zip_file:
+            #         zip_data = zip_file.read()
+            #         encoded_bytes = base64.b64encode(zip_data)
+            #         encoded_string = encoded_bytes.decode('utf-8')
+            #     print_history["storage"]["preview-zip"] = encoded_string
+            # else:
+            #     print_history["storage"]["preview-zip"] = None
+            
             return True, print_history
         except Exception as e:
             return False, str(e)
