@@ -30,7 +30,7 @@ class CamManager:
     
     def save_image(self, sub_folder):
         try:
-            if not self.capture.isOpened():
+            if   self.capture.isOpened():
                 print(f"Error: Camera with index {self.camera_index} could not be opened.")
                 return None
             

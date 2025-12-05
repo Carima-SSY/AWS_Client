@@ -17,7 +17,7 @@ class AWSClient:
         self.client_status = sm.StatusManager(device_type=device_type, device_number=device_number, history_folder=history_folder)
         self.client_file = fm.FileManager(device_type=device_type, device_number=device_number, data_folder=data_folder, recipe_folder=recipe_folder, setting_folder=setting_folder, log_folder=log_folder, history_folder=history_folder, cam_folder=cam_folder)
         self.client_log = lm.LogManager(device_type=device_type, device_number=device_number, log_folder=log_folder)
-        self.client_cam = cam.CamManager(camera_index=0, width=1920, height=1080, fps=30, webp_quality=50, cam_folder=cam_folder)
+        self.client_cam = cam.CamManager(camera_index=0, width=1280, height=720, fps=30, webp_quality=50, cam_folder=cam_folder)
         
     def request_file_transfer(self, ftype, fname, fcontent):
         if ftype == "data":
@@ -188,6 +188,37 @@ def control_print_history(client_status: sm.StatusManager):
             client_status.delete_print_history()
         return False, None
 
+def captureimg_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager, folder:str):
+    valid, zip_path = client_file.get_preview_zip(folder=folder)
+    if valid == True:
+        with open(zip_path, "rb") as zip_file:
+            zip_data = zip_file.read()
+        apig_client.put_data_to_s3(
+            put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="preview-zip", name=folder)["data"]["url"],
+            data=zip_data
+        )
+        print("Preview ZIP is processed Successfully.")
+    else: 
+        print("Preview ZIP is not available.")
+        
+        
+    valid, video = client_file.get_timelapse_video(folder=folder)
+    if valid == True:
+        with open(video, "rb") as video_file:
+            video_data = video_file.read()
+        result = apig_client.put_data_to_s3(
+            put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="timelapse-video", name=folder)["data"]["url"],
+            data=video_data
+        )
+        if result == True:
+            print(f"Timelapse video {folder} is processed Successfully.")
+        else:
+            print(f"Timelapse video {folder} is processed Failed.")
+    else: 
+        print(f"Timelapse video for folder {folder} is not available.")
+        
+    client_file.clean_timelapse_frame(folder=folder)
+        
 def cam_handler(cam_client: aws.ToIoTCore, client_status: sm.StatusManager, client_cam: cam.CamManager):
     delay_time = CAPTURE_INTERVAL
     while True:
@@ -385,11 +416,14 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                 for current_history in current_historys:
                     #print(f"CURRENT HISTORY: {current_history}")
                     _, updated_history =client_file.get_print_history(current_history)
+                    
                     #print(f"UPDATED HISTORY: {updated_history}")
                     apig_client.put_file_to_s3(
                         put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-history", name=updated_history["name"])["data"]["url"],
                         data=updated_history["storage"]
                     )
+                    threading.Thread(target=captureimg_handler, args=(apig_client, client_file, updated_history["name"])).start()
+                    
                 client_file.reset_print_history_updatelist()
             
             time.sleep(1)

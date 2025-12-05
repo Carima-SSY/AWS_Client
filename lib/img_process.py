@@ -53,6 +53,8 @@ def create_preview_zip(src_folder, output_file):
                 file_path = os.path.join(root, file)
                 zipf.write(file_path, os.path.relpath(file_path, f"{src_folder}/preview_temp"))
                 
+    shutil.rmtree(f"{src_folder}/preview_temp")
+    
 def create_timelapse(src_folder, output_file, fps):
     
     images = [img for img in os.listdir(src_folder) if img.endswith((".jpg", ".png", ".jpeg", ".webp"))]

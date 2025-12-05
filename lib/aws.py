@@ -97,5 +97,10 @@ class ToAPIG:
         response = requests.put(url=put_url, json=data)
         if response.status_code == 200: return True
         else: return False
+        
+    def put_data_to_s3(self, put_url, data):
+        response = requests.put(url=put_url, data=data)
+        if response.status_code == 200: return True
+        else: return False
 
 

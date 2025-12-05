@@ -251,11 +251,23 @@ class FileManager:
         
     def get_preview_zip(self, folder: str):
         try:
-            img_process.create_preview_zip(src_folder=f"{self.cam_folder}/{folder}", output_file=f"{self.cam_folder}/{folder}/preview_images")
-            return True, f"{self.cam_folder}/{folder}/preview_images.zip"
+            img_process.create_preview_zip(src_folder=f"{self.cam_folder}/{folder}", output_file=f"{self.cam_folder}/{folder}/{folder}")
+            return True, f"{self.cam_folder}/{folder}/{folder}.zip"
         except Exception as e:
             print(f"get_preview_zip error: {e}")
             return False, None
+     
+    def clean_timelapse_frame(self, folder: str):
+        try:
+            if os.path.exists(f"{self.cam_folder}/{folder}"):
+                images = [img for img in os.listdir(f"{self.cam_folder}/{folder}") if img.endswith((".jpg", ".png", ".jpeg", ".webp"))]
+                for image in images:
+                    file_path = os.path.join(f"{self.cam_folder}/{folder}", image)
+                    os.remove(file_path)
+            return True
+        except Exception as e:
+            print(f"clean_timelapse_frame error: {e}")
+            return False
         
     def get_print_history(self, file: str):
         try:
@@ -263,7 +275,7 @@ class FileManager:
             with open(f"{self.history_folder}/{file}", 'r', encoding='utf-8') as f:
                 print_history = json.load(f)
 
-            #files = self.get_files(f"{self.data_folder}/{print_history["database"]["print"]["data"]}")
+            # files = self.get_files(f"{self.data_folder}/{print_history["database"]["print"]["data"]}")
             # print(f"FILES TYPE:{type(files)}")
             # ================================================================================
             # Modified Code: Add idx and gcode file content in print-history.json
@@ -279,26 +291,6 @@ class FileManager:
             
             with open(f"{self.history_folder}/{file}", 'w', encoding='utf-8') as f:
                 json.dump(print_history, f, ensure_ascii=False, indent=4)
-            
-            valid, video_path = self.get_timelapse_video(folder=print_history["name"])
-            if valid == True:
-                with open(video_path, "rb") as video_file:
-                    video_data = video_file.read()
-                    encoded_bytes = base64.b64encode(video_data)
-                    encoded_string = encoded_bytes.decode('utf-8')
-                print_history["storage"]["timelapse"] = encoded_string
-            else:
-                print_history["storage"]["timelapse"] = None
-            
-            valid, zip_path = self.get_preview_zip(folder=print_history["name"])
-            if valid == True:
-                with open(zip_path, "rb") as zip_file:
-                    zip_data = zip_file.read()
-                    encoded_bytes = base64.b64encode(zip_data)
-                    encoded_string = encoded_bytes.decode('utf-8')
-                print_history["storage"]["preview-zip"] = encoded_string
-            else:
-                print_history["storage"]["preview-zip"] = None
             
             return True, print_history
         except Exception as e:

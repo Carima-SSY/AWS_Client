@@ -98,10 +98,6 @@ PRINT_HISTORY = {
     },
     "storage":{
         "data": {},
-        "recipe": {},
-        "camera": {
-            "timelapse": "-",
-            "preview-zip": "-"
-        }
+        "recipe": {}
     }
 }
