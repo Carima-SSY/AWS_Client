@@ -30,6 +30,37 @@ class AWSClient:
         else:
             return False
 
+    def request_file_deletion(self, ftype, fname):
+        if ftype == "data":
+            self.client_file.delete_print_data(name=fname)
+            return True
+        elif ftype == "recipe":
+            self.client_file.delete_print_recipe(name=fname)
+            return True
+        else:
+            return False
+        
+    def request_add_printing(self, data):
+        if self.device_type == "DM400":
+            self.client_status.add_device_request({
+                "type": "add-printing",
+                "data": data
+            })
+        
+    def request_change_printing(self, data):
+        if self.device_type == "DM400":
+            self.client_status.add_device_request({
+                "type": "add-printing",
+                "data": data
+            })
+            
+    def request_delete_printing(self, data):
+        if self.device_type == "DM400":
+            self.client_status.add_device_request({
+                "type": "delete-printing",
+                "data": data
+            })
+        
     def request_print_start(self, user, data, recipe):
         self.client_status.add_device_request({
             "type": "print-start",
@@ -42,7 +73,12 @@ class AWSClient:
         self.client_status.add_device_request({
             "type": "print-abort"
         })
-
+        
+    def request_print_pause(self):
+        self.client_status.add_device_request({
+            "type": "print-pause"
+        })
+        
     def request_select_file(self, type, name):
         self.client_status.add_device_request({
             "type": type,
@@ -78,6 +114,25 @@ class AWSClient:
             res = self.api_gateway.get_file_from_s3(get_url=data.get("url"))
             self.request_file_transfer(ftype=res.get("type"), fname=res.get("name"), fcontent=res.get("content"))
             
+        elif request == "file-deletion":
+            # print("=========================================================\n=========================================================\nDEVICE REQUEST: FILE DELETE!!!!\n=========================================================\n=========================================================\n")
+            data = message.get("data")
+            self.request_file_deletion(ftype=data.get("type"), fname=data.get("name"))
+            
+        elif request == "add-printing":
+            # print("=========================================================\n=========================================================\nDEVICE REQUEST: ADD PRINTING!!!!\n=========================================================\n=========================================================\n")
+            data = message.get("data")
+            self.request_add_printing(data=data.get("data"))
+        
+        elif request == "change-printing":
+            data = message.get("data")
+            self.request_change_printing(data=data.get("data"))
+        
+        elif request == "delete-printing":
+            # print("=========================================================\n=========================================================\nDEVICE REQUEST: DELETE PRINTING!!!!\n=========================================================\n=========================================================\n")
+            data = message.get("data")
+            self.request_delete_printing(data=data.get("data"))
+            
         elif request == "print-start":
             # print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT START!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
@@ -86,6 +141,10 @@ class AWSClient:
         elif request == "print-abort":
             # print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT ABORT!!!!\n=========================================================\n=========================================================\n")
             self.request_print_abort()
+        
+        elif request == "print-pause":
+            # print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT PAUSE!!!!\n=========================================================\n=========================================================\n")
+            self.request_print_pause()
         
         elif request == "select-data":
             # print("=========================================================\n=========================================================\nDEVICE REQUEST: SELECT DATA!!!!\n=========================================================\n=========================================================\n")
@@ -98,12 +157,12 @@ class AWSClient:
             self.request_select_file(type="select-recipe",name=data.get("recipe"))
         
         elif request == "change-recipe":
-            print("=========================================================\n=========================================================\nDEVICE REQUEST: CHANGE RECIPE!!!!\n=========================================================\n=========================================================\n")
+            # print("=========================================================\n=========================================================\nDEVICE REQUEST: CHANGE RECIPE!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
             self.request_change_file(type="print-recipe", name=data.get("name"), content=data.get("content"))
             
         elif request == "change-setting":
-            print("=========================================================\n=========================================================\nDEVICE REQUEST: CHANGE SETTING!!!!\n=========================================================\n=========================================================\n")
+            # print("=========================================================\n=========================================================\nDEVICE REQUEST: CHANGE SETTING!!!!\n=========================================================\n=========================================================\n")
             data = message.get("data")
             self.request_change_file(type="device-setting", name=data.get("name"), content=data.get("content"))
         
@@ -368,7 +427,7 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
             # Get Print Data
             # print("=========================================================\n=========================================================\nCheck Data and Recipe!!!!\n=========================================================\n=========================================================\n")
             current_data = client_file.get_print_data()
-            if client_file.print_data != current_data:
+            if client_file.print_data != current_data and current_data is not None:
                 client_file.print_data = current_data
                 # print("=========================================================\n=========================================================\nPrint Data Updated!!!!\n=========================================================\n=========================================================\n")
                 apig_client.put_file_to_s3(
@@ -377,8 +436,8 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                 )
 
             # Get Print Recipe
-            current_recipe = client_file.get_print_recipe()[1]
-            if client_file.print_recipe != current_recipe:
+            valid,current_recipe = client_file.get_print_recipe()
+            if client_file.print_recipe != current_recipe and valid == True:
                 client_file.print_recipe = current_recipe
                 # print(f"CURRENT PRINT RECIPE: {client_file.print_recipe}")
                 # print("=========================================================\n=========================================================\nPrint Recipe Updated!!!!\n=========================================================\n=========================================================\n")

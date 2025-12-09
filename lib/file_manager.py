@@ -133,45 +133,53 @@ class FileManager:
         return resin_list
 
     def get_print_data(self):
-        folders = self.get_subfolder(self.data_folder)
-        
-        slices = list()
-        for folder in folders: 
-            valid, form = self.is_slicefolder(folder)
-            if valid == True:
-                slices.append(folder)
-        
-        print_data = dict() 
-        for slice in slices:
-            name = os.path.basename(slice)
-            files = self.get_files(slice)
-            preview = self.get_previewimg(files)
-            encoded = self.encode_previewimg(preview[0], 120)
+        try:
+            folders = self.get_subfolder(self.data_folder)
             
-            print_data[name] = {
-                "preview": encoded,
-                "size": os.path.getsize(slice)
-            }  
-        return print_data
+            slices = list()
+            for folder in folders: 
+                valid, form = self.is_slicefolder(folder)
+                if valid == True:
+                    slices.append(folder)
+            
+            print_data = dict() 
+            for slice in slices:
+                name = os.path.basename(slice)
+                files = self.get_files(slice)
+                preview = self.get_previewimg(files)
+                encoded = self.encode_previewimg(preview[0], 120)
+                
+                print_data[name] = {
+                    "preview": encoded,
+                    "size": os.path.getsize(slice)
+                }  
+            return print_data
+        except Exception as e:
+            print(f"get_print_data error: {str(e)}")
+            return None
         
     def get_print_recipe(self):
-        if self.device_type == "X1" or self.device_type == "DM400":
-            files = self.get_files(self.recipe_folder)
-            recipe_dic = dict()
-            for file in files:
-                if self.is_recipefile(file):
-                    recipe_dic[os.path.basename(file)] = {
-                        "content": self.convert_xml_to_json(file),
-                        "size": os.path.getsize(file)
-                    }
-            return True, recipe_dic    
-        elif self.device_type == "DM4K" or self.device_type == "IML" or self.device_type == "IMDC" or self.device_type == "IMD":
-            recipe_dic = dict()
-            recipe_dic["recipe-list"] = self.extract_resins(self.recipe_folder+"/resin.cfg")
-            return True, recipe_dic
-        else:
+        try: 
+            if self.device_type == "X1" or self.device_type == "DM400":
+                files = self.get_files(self.recipe_folder)
+                recipe_dic = dict()
+                for file in files:
+                    if self.is_recipefile(file):
+                        recipe_dic[os.path.basename(file)] = {
+                            "content": self.convert_xml_to_json(file),
+                            "size": os.path.getsize(file)
+                        }
+                return True, recipe_dic    
+            elif self.device_type == "DM4K" or self.device_type == "IML" or self.device_type == "IMDC" or self.device_type == "IMD":
+                recipe_dic = dict()
+                recipe_dic["recipe-list"] = self.extract_resins(self.recipe_folder+"/resin.cfg")
+                return True, recipe_dic
+            else:
+                return False, None
+        except Exception as e:
+            print(f"get_print_recipe error: {str(e)}")
             return False, None
-    
+        
     def get_device_setting(self):
         if self.device_type == "X1" or self.device_type == "DM400":
             files = self.get_files(self.setting_folder)
@@ -320,6 +328,15 @@ class FileManager:
                 shutil.move(os.path.join(inner_folder, item), data_file_path)
             os.rmdir(inner_folder)
             
+    def delete_print_data(self, name: str):
+        data_folder_path = self.data_folder+"/"+name
+        try:
+            shutil.rmtree(data_folder_path)
+            return True
+        except Exception as e:
+            print(f"Exception error in delete_print_data: {str(e)}")
+            return False
+        
     def add_print_recipe(self, name: str, encoded_content: str):
         if self.device_type != "X1" or self.device_type != "DM400":
             return False
@@ -332,3 +349,12 @@ class FileManager:
         #파일로 저장
         with open(recipe_file_path, 'wb') as f:
             f.write(decoded_content)    
+            
+    def delete_print_recipe(self, name: str):
+        recipe_file_path = self.recipe_folder+"/"+name
+        try:
+            os.remove(recipe_file_path)
+            return True
+        except Exception as e:
+            print(f"Exception error in delete_print_recipe: {str(e)}")
+            return False
