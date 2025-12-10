@@ -249,6 +249,14 @@ class FileManager:
         except Exception as e:
             return False, str(e)
     
+    def get_frame_count(self, folder: str):
+        try:
+            images = [img for img in os.listdir(f"{self.cam_folder}/{folder}") if img.endswith((".webp"))]
+            return True, len(images)
+        except Exception as e:
+            print(f"get_frame_count error: {e}")
+            return False, None
+    
     def get_timelapse_video(self, folder: str):
         try:
             img_process.create_timelapse(src_folder=f"{self.cam_folder}/{folder}", output_file=f"{self.cam_folder}/{folder}/{folder}.mp4", fps=30)

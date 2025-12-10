@@ -41,21 +41,21 @@ class AWSClient:
             return False
         
     def request_add_printing(self, data):
-        if self.device_type == "DM400":
+        if self.client_status.device_type == "DM400":
             self.client_status.add_device_request({
                 "type": "add-printing",
                 "data": data
             })
         
     def request_change_printing(self, data):
-        if self.device_type == "DM400":
+        if self.client_status.device_type == "DM400":
             self.client_status.add_device_request({
-                "type": "add-printing",
+                "type": "change-printing",
                 "data": data
             })
             
     def request_delete_printing(self, data):
-        if self.device_type == "DM400":
+        if self.client_status.device_type == "DM400":
             self.client_status.add_device_request({
                 "type": "delete-printing",
                 "data": data
@@ -204,6 +204,7 @@ APIG_ENDPOINT = client_config["APIGateway"]["end_point"]
 
 CAPTURE_INTERVAL = 10
 SAVE_INTERVAL = 1
+
 def control_print_history(client_status: sm.StatusManager):
     if client_status.get_device_status()["status"] == "PRINTING":
         if os.path.exists(get_resource_path("print-history.json")) == False:
@@ -248,35 +249,40 @@ def control_print_history(client_status: sm.StatusManager):
         return False, None
 
 def captureimg_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager, folder:str):
-    valid, zip_path = client_file.get_preview_zip(folder=folder)
-    if valid == True:
-        with open(zip_path, "rb") as zip_file:
-            zip_data = zip_file.read()
-        apig_client.put_data_to_s3(
-            put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="preview-zip", name=folder)["data"]["url"],
-            data=zip_data
-        )
-        print("Preview ZIP is processed Successfully.")
-    else: 
-        print("Preview ZIP is not available.")
-        
-        
-    valid, video = client_file.get_timelapse_video(folder=folder)
-    if valid == True:
-        with open(video, "rb") as video_file:
-            video_data = video_file.read()
-        result = apig_client.put_data_to_s3(
-            put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="timelapse-video", name=folder)["data"]["url"],
-            data=video_data
-        )
-        if result == True:
-            print(f"Timelapse video {folder} is processed Successfully.")
-        else:
-            print(f"Timelapse video {folder} is processed Failed.")
-    else: 
-        print(f"Timelapse video for folder {folder} is not available.")
-        
-    client_file.clean_timelapse_frame(folder=folder)
+    try:
+        if client_file.get_frame_count(folder=folder)[1] > 0:
+            valid, zip_path = client_file.get_preview_zip(folder=folder)
+            if valid == True:
+                with open(zip_path, "rb") as zip_file:
+                    zip_data = zip_file.read()
+                apig_client.put_data_to_s3(
+                    put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="preview-zip", name=folder)["data"]["url"],
+                    data=zip_data
+                )
+                print("Preview ZIP is processed Successfully.")
+            else: 
+                print("Preview ZIP is not available.")
+                
+                
+            valid, video = client_file.get_timelapse_video(folder=folder)
+            if valid == True:
+                with open(video, "rb") as video_file:
+                    video_data = video_file.read()
+                result = apig_client.put_data_to_s3(
+                    put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="timelapse-video", name=folder)["data"]["url"],
+                    data=video_data
+                )
+                if result == True:  
+                    print(f"Timelapse video {folder} is processed Successfully.")
+                else:
+                    print(f"Timelapse video {folder} is processed Failed.")
+            else: 
+                print(f"Timelapse video for folder {folder} is not available.")
+                
+            client_file.clean_timelapse_frame(folder=folder)
+    except Exception as e:
+        print(f"Exception in captureimg_handler: {str(e)}")
+        pass
         
 def cam_handler(cam_client: aws.ToIoTCore, client_status: sm.StatusManager, client_cam: cam.CamManager):
     delay_time = CAPTURE_INTERVAL
