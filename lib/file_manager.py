@@ -359,7 +359,11 @@ class FileManager:
             f.write(decoded_content)    
             
     def delete_print_recipe(self, name: str):
+        if self.device_type != "X1" or self.device_type != "DM400":
+            return False
+        
         recipe_file_path = self.recipe_folder+"/"+name
+        
         try:
             os.remove(recipe_file_path)
             return True

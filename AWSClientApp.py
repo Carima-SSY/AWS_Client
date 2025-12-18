@@ -115,23 +115,25 @@ class AWSClient:
             self.request_file_transfer(ftype=res.get("type"), fname=res.get("name"), fcontent=res.get("content"))
             
         elif request == "file-deletion":
-            # print("=========================================================\n=========================================================\nDEVICE REQUEST: FILE DELETE!!!!\n=========================================================\n=========================================================\n")
+            print("=========================================================\n=========================================================\nDEVICE REQUEST: FILE DELETE!!!!\n=========================================================\n=========================================================\n")
+            message = dict(json.loads(msg.payload.decode()))
+            print (f"Message from {topic} is {message}")
             data = message.get("data")
             self.request_file_deletion(ftype=data.get("type"), fname=data.get("name"))
             
-        elif request == "add-printing":
-            # print("=========================================================\n=========================================================\nDEVICE REQUEST: ADD PRINTING!!!!\n=========================================================\n=========================================================\n")
-            data = message.get("data")
-            self.request_add_printing(data=data.get("data"))
+        # elif request == "add-printing":
+        #     # print("=========================================================\n=========================================================\nDEVICE REQUEST: ADD PRINTING!!!!\n=========================================================\n=========================================================\n")
+        #     data = message.get("data")
+        #     self.request_add_printing(data=data.get("data"))
         
         elif request == "change-printing":
             data = message.get("data")
             self.request_change_printing(data=data.get("data"))
         
-        elif request == "delete-printing":
-            # print("=========================================================\n=========================================================\nDEVICE REQUEST: DELETE PRINTING!!!!\n=========================================================\n=========================================================\n")
-            data = message.get("data")
-            self.request_delete_printing(data=data.get("data"))
+        # elif request == "delete-printing":
+        #     # print("=========================================================\n=========================================================\nDEVICE REQUEST: DELETE PRINTING!!!!\n=========================================================\n=========================================================\n")
+        #     data = message.get("data")
+        #     self.request_delete_printing(data=data.get("data"))
             
         elif request == "print-start":
             # print("=========================================================\n=========================================================\nDEVICE REQUEST: PRINT START!!!!\n=========================================================\n=========================================================\n")
