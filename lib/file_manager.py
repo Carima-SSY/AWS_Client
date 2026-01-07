@@ -172,7 +172,7 @@ class FileManager:
                 return True, recipe_dic    
             elif self.device_type == "DM4K" or self.device_type == "IML" or self.device_type == "IMDC" or self.device_type == "IMD":
                 recipe_dic = dict()
-                recipe_dic["recipe-list"] = self.extract_resins(self.recipe_folder+"/resin.cfg")
+                recipe_dic["recipe-list"] = self.extract_resins(os.path.join(self.recipe_folder, "resin.cfg"))
                 return True, recipe_dic
             else:
                 return False, None
@@ -195,7 +195,7 @@ class FileManager:
     
     def get_device_log_updatelist(self):
         try:
-            with open(f"{self.log_folder}/device-log.json", 'r', encoding='utf-8') as f:
+            with open(os.path.join(self.log_folder, "device-log.json"), 'r', encoding='utf-8') as f:
                 device_log = json.load(f)
             return True, device_log["updated-list"]
         except Exception as e:
@@ -203,7 +203,7 @@ class FileManager:
         
     def reset_device_log_updatelist(self):
         try:
-            with open(f"{self.log_folder}/device-log.json", 'w', encoding='utf-8') as f:
+            with open(os.path.join(self.log_folder, "device-log.json"), 'w', encoding='utf-8') as f:
                 json.dump({"updated-list": []}, f, ensure_ascii=False, indent=4)
             return True, "ResetSuccess"
         except Exception as e:
@@ -211,7 +211,7 @@ class FileManager:
         
     def get_device_log(self, file: str):
         try:
-            with open(f"{self.log_folder}/{file}", 'r', encoding='utf-8') as f:
+            with open(os.path.join(self.log_folder, file), 'r', encoding='utf-8') as f:
                 device_log = json.load(f)
             return True, device_log
         except Exception as e:
@@ -219,7 +219,7 @@ class FileManager:
         
     def get_print_history_updatelist(self):
         try:
-            with open(f"{self.history_folder}/print-history.json", 'r', encoding='utf-8') as f:
+            with open(os.path.join(self.history_folder, "print-history.json"), 'r', encoding='utf-8') as f:
                 print_history = json.load(f)
             return True, print_history["updated-list"]
         except Exception as e:
@@ -227,7 +227,7 @@ class FileManager:
         
     def reset_print_history_updatelist(self):
         try:
-            with open(f"{self.history_folder}/print-history.json", 'w', encoding='utf-8') as f:
+            with open(os.path.join(self.history_folder, "print-history.json"), 'w', encoding='utf-8') as f:
                 json.dump({"updated-list": []}, f, ensure_ascii=False, indent=4)
             return True, "ResetSuccess"
         except Exception as e:
@@ -239,8 +239,8 @@ class FileManager:
             blob = dict(); i=1
             while True:
                 # print(f"{self.data_folder}/{slice}/SEC_{i:04d}.png")
-                if os.path.exists(f"{self.data_folder}/{slice}/SEC_{i:04d}.png"):
-                    blob[f"SEC_{i:04d}.png"] = img_process.analyze_dlp_slice_image(f"{self.data_folder}/{slice}/SEC_{i:04d}.png")
+                if os.path.exists(os.path.join(self.data_folder, slice, f"SEC_{i:04d}.png")):
+                    blob[f"SEC_{i:04d}.png"] = img_process.analyze_dlp_slice_image(os.path.join(self.data_folder, slice, f"SEC_{i:04d}.png"))
                     i+=1
                 else: 
                     #print("\n==========================================\nget_print_data_blob END\n==========================================\n")
@@ -251,7 +251,7 @@ class FileManager:
     
     def get_frame_count(self, folder: str):
         try:
-            images = [img for img in os.listdir(f"{self.cam_folder}/{folder}") if img.endswith((".webp"))]
+            images = [img for img in os.listdir(os.path.join(self.cam_folder, folder)) if img.endswith((".webp"))]
             return True, len(images)
         except Exception as e:
             print(f"get_frame_count error: {e}")
@@ -259,26 +259,26 @@ class FileManager:
     
     def get_timelapse_video(self, folder: str):
         try:
-            img_process.create_timelapse(src_folder=f"{self.cam_folder}/{folder}", output_file=f"{self.cam_folder}/{folder}/{folder}.mp4", fps=30)
-            return True, f"{self.cam_folder}/{folder}/{folder}.mp4"
+            img_process.create_timelapse(src_folder=os.path.join(self.cam_folder, folder), output_file=os.path.join(self.cam_folder, folder, f"{folder}.mp4"), fps=30)
+            return True, os.path.join(self.cam_folder, folder, f"{folder}.mp4") 
         except Exception as e:
             print(f"get_timelapse_video error: {e}")
             return False, None
         
     def get_preview_zip(self, folder: str):
         try:
-            img_process.create_preview_zip(src_folder=f"{self.cam_folder}/{folder}", output_file=f"{self.cam_folder}/{folder}/{folder}")
-            return True, f"{self.cam_folder}/{folder}/{folder}.zip"
+            img_process.create_preview_zip(src_folder=os.path.join(self.cam_folder, folder), output_file=os.path.join(self.cam_folder, folder, folder))
+            return True, os.path.join(self.cam_folder, folder, f"{folder}.zip")
         except Exception as e:
             print(f"get_preview_zip error: {e}")
             return False, None
      
     def clean_timelapse_frame(self, folder: str):
         try:
-            if os.path.exists(f"{self.cam_folder}/{folder}"):
-                images = [img for img in os.listdir(f"{self.cam_folder}/{folder}") if img.endswith((".jpg", ".png", ".jpeg", ".webp"))]
+            if os.path.exists(os.path.join(self.cam_folder, folder)):
+                images = [img for img in os.listdir(os.path.join(self.cam_folder, folder)) if img.endswith((".jpg", ".png", ".jpeg", ".webp"))]
                 for image in images:
-                    file_path = os.path.join(f"{self.cam_folder}/{folder}", image)
+                    file_path = os.path.join(self.cam_folder, folder, image)
                     os.remove(file_path)
             return True
         except Exception as e:
@@ -288,7 +288,7 @@ class FileManager:
     def get_print_history(self, file: str):
         try:
             print(f"get_print_history: {file}")
-            with open(f"{self.history_folder}/{file}", 'r', encoding='utf-8') as f:
+            with open(os.path.join(self.history_folder, file), 'r', encoding='utf-8') as f:
                 print_history = json.load(f)
 
             # files = self.get_files(f"{self.data_folder}/{print_history["database"]["print"]["data"]}")
@@ -303,9 +303,9 @@ class FileManager:
             
             print_history["storage"]["data"]["slices"] = self.get_print_data_blob(print_history["database"]["print"]["data"])[1] 
             # ================================================================================
-            print_history["storage"]["recipe"] = self.convert_xml_to_json(f"{self.recipe_folder}/{print_history['database']['print']['recipe']}")
+            print_history["storage"]["recipe"] = self.convert_xml_to_json(os.path.join(self.recipe_folder, print_history['database']['print']['recipe']))
             
-            with open(f"{self.history_folder}/{file}", 'w', encoding='utf-8') as f:
+            with open(os.path.join(self.history_folder, file), 'w', encoding='utf-8') as f:
                 json.dump(print_history, f, ensure_ascii=False, indent=4)
             
             return True, print_history
@@ -318,7 +318,7 @@ class FileManager:
         return True
     
     def add_print_data(self, name: str, encoded_content: str):
-        data_file_path = self.data_folder+"/"+name
+        data_file_path = os.path.join(self.data_folder, name)
         
         # base64 디코딩
         decoded_bytes = base64.b64decode(encoded_content)
@@ -337,7 +337,8 @@ class FileManager:
             os.rmdir(inner_folder)
             
     def delete_print_data(self, name: str):
-        data_folder_path = self.data_folder+"/"+name
+        data_folder_path = os.path.join(self.data_folder, name)
+        
         try:
             shutil.rmtree(data_folder_path)
             return True
@@ -349,7 +350,7 @@ class FileManager:
         if self.device_type != "X1" or self.device_type != "DM400":
             return False
         
-        recipe_file_path = self.recipe_folder+"/"+name
+        recipe_file_path = os.path.join(self.recipe_folder, name)
 
         # base64 디코딩
         decoded_content = base64.b64decode(encoded_content)
@@ -362,7 +363,7 @@ class FileManager:
         if self.device_type != "X1" or self.device_type != "DM400":
             return False
         
-        recipe_file_path = self.recipe_folder+"/"+name
+        recipe_file_path = os.path.join(self.recipe_folder, name)
         
         try:
             os.remove(recipe_file_path)

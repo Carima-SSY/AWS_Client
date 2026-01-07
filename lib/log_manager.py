@@ -15,10 +15,10 @@ class LogManager:
             },
             "data": list()
         }
-        with open(f"{self.log_folder}/{filename}", 'w', encoding='utf-8') as log_file:
+        with open(os.path.join(self.log_folder, filename), 'w', encoding='utf-8') as log_file:
             json.dump(empty_dic, log_file, indent=4) 
             
-        return f"{self.log_folder}/{filename}"
+        return os.path.join(self.log_folder, filename)
     
     def update_log_file(self, file, data):
         current_data = {}
@@ -33,10 +33,10 @@ class LogManager:
             json.dump(current_data, f, ensure_ascii=False, indent=4)
 
     def save_log_file(self, file: str):
-        with open(f"{self.log_folder}/device-log.json", 'r', encoding='utf-8') as f:
+        with open(os.path.join(self.log_folder, "device-log.json"), 'r', encoding='utf-8') as f:
             device_log = json.load(f)
             
         device_log["updated-list"].append(os.path.basename(file))
 
-        with open(f"{self.log_folder}/device-log.json", 'w', encoding='utf-8') as f:
+        with open(os.path.join(self.log_folder, "device-log.json"), 'w', encoding='utf-8') as f:
             json.dump(device_log, f, ensure_ascii=False, indent=4)

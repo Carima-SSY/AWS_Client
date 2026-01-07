@@ -18,11 +18,11 @@ class CamManager:
         self.capture.set(cv2.CAP_PROP_FPS, self.fps)
         
     def exists_cam_folder(self, sub_folder):
-        return os.path.exists(f"{self.cam_folder}/{sub_folder}")
+        return os.path.exists(os.path.join(self.cam_folder, sub_folder))
 
     def create_sub_folder(self, sub_folder):
         try:
-            os.makedirs(f"{self.cam_folder}/{sub_folder}")
+            os.makedirs(os.path.join(self.cam_folder, sub_folder), exist_ok=True)
             return True
         except Exception as e:
             print(f"Exception in create_sub_folder -> {sub_folder}: {e}")
@@ -43,7 +43,8 @@ class CamManager:
             byte_io = io.BytesIO()
             byte_io.write(buffer.tobytes())
             byte_io.seek(0)
-            with open(f"{self.cam_folder}/{sub_folder}/cam-{int(time.time())}.webp", 'wb') as f:
+            
+            with open(os.path.join(self.cam_folder, sub_folder, f"cam-{int(time.time())}.webp"), 'wb') as f:
                 f.write(byte_io.read())
             
             img_bytes = io.BytesIO(buffer).getvalue()
@@ -51,7 +52,7 @@ class CamManager:
 
             return img_base64
         except Exception as e:
-            print(f"Camera capture error: {e}")
+            print(f"save image exception error: {e}")
             
             return None
         
@@ -71,7 +72,7 @@ class CamManager:
             #print(img_base64)
             return img_base64
         except Exception as e:
-            print(f"Camera capture error: {e}")
+            print(f"capture image exception error: {e}")
             
             return None
         

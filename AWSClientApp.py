@@ -227,16 +227,16 @@ def control_print_history(client_status: sm.StatusManager):
             if current_history["database"]["result"] == "-":
                 current_history["database"]["result"] = client_status.get_device_status()["status"]
                 current_history["database"]["time"]["end"] = datetime.datetime.fromtimestamp(int(time.time())).strftime("%Y:%m:%d:%H:%M:%S")
-        
-                with open(f'{client_status.history_folder}/{current_history["name"]}.json', 'w', encoding='utf-8') as f:
+
+                with open(os.path.join(client_status.history_folder, f'{current_history["name"]}.json'), 'w', encoding='utf-8') as f:
                     json.dump(current_history, f, ensure_ascii=False, indent=4)
                     
-                with open(f'{client_status.history_folder}/print-history.json', 'r', encoding='utf-8') as f:
+                with open(os.path.join(client_status.history_folder, "print-history.json"), 'r', encoding='utf-8') as f:
                     print_history = json.load(f)
                     
                 print_history['updated-list'].append(f'{current_history["name"]}.json')
                 
-                with open(f'{client_status.history_folder}/print-history.json', 'w', encoding='utf-8') as f:
+                with open(os.path.join(client_status.history_folder, "print-history.json"), 'w', encoding='utf-8') as f:
                     json.dump(print_history, f, ensure_ascii=False, indent=4)
                     
                 client_status.delete_print_history()
@@ -381,7 +381,7 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
                     "print": aws_client.client_status.get_print_status()
                 })    
                 log_count += 1        
-            else: 
+            else:  
                 log_count = 0
                 print("=========================================================\n=========================================================\nDEVICE LOG: SAVE AND UPDATE!!!!\n=========================================================\n=========================================================\n")
                 client_log.save_log_file(file=file_path)
