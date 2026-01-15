@@ -325,6 +325,7 @@ def cam_handler(cam_client: aws.ToIoTCore, client_status: sm.StatusManager, clie
 
 def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, client_log: lm.LogManager):
     count = 0
+    current_timestamp = int(time.time())
     
     current_devconfig = dict()
 
@@ -334,9 +335,10 @@ def status_handler(iot_client: aws.ToIoTCore, client_status: sm.StatusManager, c
         try:
             status_target = ["browser"]
                      
-            if count >= 60: 
+            if count >= 60 or int(time.time()) - current_timestamp >= 60: 
                 status_target.append("storage")
                 count = 0
+                current_timestamp = int(time.time())
             elif client_status.get_device_status()['status'] == "OFFLINE":
                 status_target.append("storage")
                 
