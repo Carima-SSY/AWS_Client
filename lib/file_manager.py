@@ -1,4 +1,4 @@
-import os, io, json , base64, time
+import os, io, json , base64, time, glob
 from PIL import Image
 import zipfile
 import shutil
@@ -60,13 +60,15 @@ class FileManager:
     
     def get_idx_file(self, files: list):
         for file in files:
-            if ".idx" in str(file).lower():
+            _, extension = os.path.splitext(file)
+            if extension == ".idx":
                 return file
         return None
     
     def get_gcode_file(self, files: list):
         for file in files:
-            if ".gcode" in str(file).lower():
+            _, extension = os.path.splitext(file)
+            if extension == ".gcode":
                 return file
         return None
     
@@ -147,12 +149,15 @@ class FileManager:
                 name = os.path.basename(slice)
                 files = self.get_files(slice)
                 preview = self.get_previewimg(files)
-                encoded = self.encode_previewimg(preview[0], 120)
-                
-                print_data[name] = {
-                    "preview": encoded,
-                    "size": os.path.getsize(slice)
-                }  
+                if len(preview) == 0 or (self.get_idx_file(files) is None and self.get_gcode_file(files) is None):
+                    shutil.rmtree(slice)
+                else:
+                    encoded = self.encode_previewimg(preview[0], 120)
+                    
+                    print_data[name] = {
+                        "preview": encoded,
+                        "size": os.path.getsize(slice)
+                    }  
             return print_data
         except Exception as e:
             print(f"get_print_data error: {str(e)}")
