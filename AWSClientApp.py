@@ -221,6 +221,7 @@ def control_print_history(client_status: sm.StatusManager):
             client_status.set_print_history(data=current_history)
         
         return False, None
+    
     elif client_status.get_device_status()["status"] == "PRINTING_FINISH" or client_status.get_device_status()["status"] == "PRINTING_ABORT":
         if os.path.exists(get_resource_path("print-history.json")):
             current_history = client_status.get_print_history()
@@ -245,9 +246,12 @@ def control_print_history(client_status: sm.StatusManager):
             else: return False, None
         else:
             return False, None
-    else: 
+        
+    elif client_status.get_device_status()["status"] == "OFFLINE" or client_status.get_device_status()["status"] == "IDLE" or client_status.get_device_status()["status"] == "CONFIG_EDIT" or client_status.get_device_status()["status"] == "DEVICE_CONTROL": 
         if os.path.exists(get_resource_path("print-history.json")):
             client_status.delete_print_history()
+        return False, None
+    else:
         return False, None
 
 def captureimg_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager, folder:str):
@@ -441,7 +445,7 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                 client_file.print_data = current_data
                 # print("=========================================================\n=========================================================\nPrint Data Updated!!!!\n=========================================================\n=========================================================\n")
                 apig_client.put_file_to_s3(
-                    put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-data")["data"]["url"], 
+                      put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-data")["data"]["url"], 
                     data=client_file.print_data
                 )
 
@@ -455,7 +459,7 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                     put_url=apig_client.get_presigned_url(devtype=DEVICE_TYPE, devnum=DEVICE_NUMBER, method="put_object", data="print-recipe")["data"]["url"],
                     data=client_file.print_recipe
                 )
-                
+                 
             current_setting = client_file.get_device_setting()[1]
             if client_file.device_setting != current_setting:
                 client_file.device_setting = current_setting
