@@ -208,7 +208,7 @@ CAPTURE_INTERVAL = 10
 SAVE_INTERVAL = 1
 
 def control_print_history(client_status: sm.StatusManager):
-    if client_status.get_device_status()["status"] == "PRINTING":
+    if client_status.get_device_status()["status"] in ["PRINTING_READY", "PRINTING", "PRINTING_PAUSE", "PARTS_REMOVING", "WAIT_POSTPROCESS", "PUSH_PARTS"]:
         if os.path.exists(get_resource_path("print-history.json")) == False:
             client_status.create_print_history()
             current_history = client_status.get_print_history()
@@ -222,7 +222,7 @@ def control_print_history(client_status: sm.StatusManager):
         
         return False, None
     
-    elif client_status.get_device_status()["status"] == "PRINTING_FINISH" or client_status.get_device_status()["status"] == "PRINTING_ABORT":
+    elif client_status.get_device_status()["status"] in ["PRINTING_ABORT", "PRINTING_FINISH"]:
         if os.path.exists(get_resource_path("print-history.json")):
             current_history = client_status.get_print_history()
             if current_history["database"]["result"] == "-":
@@ -247,11 +247,14 @@ def control_print_history(client_status: sm.StatusManager):
         else:
             return False, None
         
-    elif client_status.get_device_status()["status"] == "OFFLINE" or client_status.get_device_status()["status"] == "IDLE" or client_status.get_device_status()["status"] == "CONFIG_EDIT" or client_status.get_device_status()["status"] == "DEVICE_CONTROL": 
+    elif client_status.get_device_status()["status"] in ["OFFLINE", "IDLE", "CONFIG_EDIT", "DEVICE_CONTROL"]:
         if os.path.exists(get_resource_path("print-history.json")):
             client_status.delete_print_history()
+            print(f"\n=========================================================\n=========================================================\nDELETE PRINT HISTORY DUE TO DEVICE: {client_status.get_device_status()["status"]}\n=========================================================\n=========================================================\n")
         return False, None
+    
     else:
+        print(f"\n=========================================================\n=========================================================\nINVALID STATUS: {client_status.get_device_status()["status"]}\n=========================================================\n=========================================================\n")
         return False, None
 
 def captureimg_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager, folder:str):
