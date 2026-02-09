@@ -465,7 +465,7 @@ def file_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager):
                  
             current_setting = client_file.get_device_setting()[1]
             if client_file.device_setting != current_setting:
-                client_file.device_setting = current_setting
+                client_file.device_setting = current_setting 
                 # print(f"CURRENT DEVICE SETTING: {client_file.device_setting}")
                 # print("=========================================================\n=========================================================\nDEVICE SETTING Updated!!!!\n=========================================================\n=========================================================\n")
                 apig_client.put_file_to_s3(
