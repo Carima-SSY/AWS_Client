@@ -250,11 +250,11 @@ def control_print_history(client_status: sm.StatusManager):
     elif client_status.get_device_status()["status"] in ["OFFLINE", "IDLE", "CONFIG_EDIT", "DEVICE_CONTROL"]:
         if os.path.exists(get_resource_path("print-history.json")):
             client_status.delete_print_history()
-            print(f"\n=========================================================\n=========================================================\nDELETE PRINT HISTORY DUE TO DEVICE: {client_status.get_device_status()["status"]}\n=========================================================\n=========================================================\n")
+            print(f"\n=========================================================\n=========================================================\nDELETE PRINT HISTORY DUE TO DEVICE: {client_status.get_device_status()['status']}\n=========================================================\n=========================================================\n")
         return False, None
     
     else:
-        print(f"\n=========================================================\n=========================================================\nINVALID STATUS: {client_status.get_device_status()["status"]}\n=========================================================\n=========================================================\n")
+        print(f"\n=========================================================\n=========================================================\nINVALID STATUS: {client_status.get_device_status()['status']}\n=========================================================\n=========================================================\n")
         return False, None
 
 def captureimg_handler(apig_client: aws.ToAPIG, client_file: fm.FileManager, folder:str):
