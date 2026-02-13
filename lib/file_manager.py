@@ -175,7 +175,7 @@ class FileManager:
                             "size": os.path.getsize(file)
                         }
                 return True, recipe_dic    
-            elif self.device_type == "DM4K" or self.device_type == "IML" or self.device_type == "IMDC" or self.device_type == "IMD":
+            elif self.device_type in ["DM4K", "IML", "IML16K", "IMDC", "IMD", "ZENESIS"]:
                 recipe_dic = dict()
                 recipe_dic["recipe-list"] = self.extract_resins(os.path.join(self.recipe_folder, "resin.cfg"))
                 return True, recipe_dic
@@ -193,7 +193,7 @@ class FileManager:
                 if self.is_settingfile(file):
                     setting_dic = self.convert_xml_to_json(file)
             return True, setting_dic    
-        elif self.device_type == "DM4K" or self.device_type == "IML" or self.device_type == "IMDC" or self.device_type == "IMD":
+        elif self.device_type in ["DM4K", "IML", "IML16K", "IMDC", "IMD", "ZENESIS"]:
             return True, dict()
         else:
             return False, None

@@ -10,8 +10,8 @@
         "private_key": "/Users/carima/Documents/AWS/IoTCore/V2_Test_Things/carima-hub_v2_private.pem.key"
     },
     "device":{
-        "type": "DM400",
-        "number": 777777
+        "type": "ZENESIS",
+        "number": 0
     },
     "dir":{
         "data": "/Users/carima/Documents/TestDir/Datas",

@@ -34,6 +34,11 @@ SENSOR_STATUS = {
             "right": -1,
             "one": -1
         }
+    },
+    "environment":{
+        "connected": 0,
+        "temperature": -1,
+        "humidity": -1
     }
 }
 
