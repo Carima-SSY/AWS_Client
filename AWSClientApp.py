@@ -207,6 +207,7 @@ APIG_ENDPOINT = client_config["APIGateway"]["end_point"]
 CAPTURE_INTERVAL = 10
 SAVE_INTERVAL = 1
 
+
 def control_print_history(client_status: sm.StatusManager):
     if client_status.get_device_status()["status"] in ["PRINTING_READY", "PRINTING", "PRINTING_PAUSE", "PARTS_REMOVING", "WAIT_POSTPROCESS", "PUSH_PARTS"]:
         if os.path.exists(get_resource_path("print-history.json")) == False:
@@ -218,6 +219,11 @@ def control_print_history(client_status: sm.StatusManager):
             current_history["database"]["print"]["recipe"] = client_status.get_print_status()["recipe"]
             current_history["database"]["time"]["start"] = datetime.datetime.fromtimestamp(int(time.time())).strftime("%Y:%m:%d:%H:%M:%S")
 
+            current = float(client_status.get_sensor_status()["temperature"]["current"])
+            target = float(client_status.get_sensor_status()["temperature"]["target"])
+            if current - target > 1 or target - current > 1:
+                current_history["database"]["warning"] = f"HEATING: {target - current:.2f} DEGREE DIFFERENCE"
+    
             client_status.set_print_history(data=current_history)
         
         return False, None

@@ -99,6 +99,7 @@ PRINT_HISTORY = {
         }, 
         "result": "-",
         "error-rate": -1,
+        "warning": "-",
         "comment": []
     },
     "storage":{
