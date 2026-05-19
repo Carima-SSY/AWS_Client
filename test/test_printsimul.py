@@ -15,7 +15,7 @@ write_json(file='../device-status.json',data={
     "allow-remote-control": 1,
     "status": "PRINTING",
     "selected":{
-        "data": ["test.crmaslice"],
+        "data": ["test1.crmaslice", "test2.crmaslice", "test3.crmaslice"],
         "recipe": "sample.xml"
     }
 })
@@ -23,7 +23,7 @@ write_json(file='../device-status.json',data={
 write_json(file='../print-status.json',data={
     "user": "on-device",
     "data-index": 0,
-    "data": ["test.crmaslice"],
+    "data": ["test1.crmaslice", "test2.crmaslice", "test3.crmaslice"],
     "recipe": "sample.xml",
     "current-layer": 0,
     "total-layer": 0,
@@ -35,9 +35,77 @@ time.sleep(10)
 
 write_json(file='../device-status.json',data={
     "allow-remote-control": 0,
-    "status": "PRINTING_ABORT",
+    "status": "PRINTING_FINISH",
     "selected":{
-        "data": ["test.crmaslice"],
+        "data": ["test1.crmaslice", "test2.crmaslice", "test3.crmaslice"],
+        "recipe": "sample.xml"
+    }
+})
+
+
+time.sleep(3)
+
+write_json(file='../device-status.json',data={
+    "allow-remote-control": 1,
+    "status": "PRINTING",
+    "selected":{
+        "data": ["test1.crmaslice", "test2.crmaslice", "test3.crmaslice"],
+        "recipe": "sample.xml"
+    }
+})
+
+write_json(file='../print-status.json',data={
+    "user": "on-device",
+    "data-index": 1,
+    "data": ["test1.crmaslice", "test2.crmaslice", "test3.crmaslice"],
+    "recipe": "sample.xml",
+    "current-layer": 0,
+    "total-layer": 0,
+    "remaining-time": 0,
+    "progress": 0
+})
+
+time.sleep(10)
+
+write_json(file='../device-status.json',data={
+    "allow-remote-control": 0,
+    "status": "PRINTING_FINISH",
+    "selected":{
+        "data": ["test1.crmaslice", "test2.crmaslice", "test3.crmaslice"],
+        "recipe": "sample.xml"
+    }
+})
+
+
+time.sleep(3)
+
+write_json(file='../device-status.json',data={
+    "allow-remote-control": 1,
+    "status": "PRINTING",
+    "selected":{
+        "data": ["test1.crmaslice", "test2.crmaslice", "test3.crmaslice"],
+        "recipe": "sample.xml"
+    }
+})
+
+write_json(file='../print-status.json',data={
+    "user": "on-device",
+    "data-index": 2,
+    "data": ["test1.crmaslice", "test2.crmaslice", "test3.crmaslice"],
+    "recipe": "sample.xml",
+    "current-layer": 0,
+    "total-layer": 0,
+    "remaining-time": 0,
+    "progress": 0
+})
+
+time.sleep(10)
+
+write_json(file='../device-status.json',data={
+    "allow-remote-control": 0,
+    "status": "PRINTING_FINISH",
+    "selected":{
+        "data": ["test1.crmaslice", "test2.crmaslice", "test3.crmaslice"],
         "recipe": "sample.xml"
     }
 })
@@ -47,7 +115,7 @@ time.sleep(3)
 
 write_json(file='../device-status.json',data={
     "allow-remote-control": 0,
-    "status": "IDLE",
+    "status": "OFFLINE",
     "selected":{
         "data": [],
         "recipe": "-"

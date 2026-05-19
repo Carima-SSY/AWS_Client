@@ -28,6 +28,12 @@ class FileManager:
                 return True, sf
         return False, None
 
+    def is_slicefile(self, file: str):
+        for sf in SLICE_FORMAT:
+            if sf in file: 
+                return True
+        return False
+
     def is_recipefile(self, file: str):
         if ".xml" in file or ".cfg" in file:
             return True
@@ -137,12 +143,18 @@ class FileManager:
     def get_print_data(self):
         try:
             folders = self.get_subfolder(self.data_folder)
+            files = self.get_files(self.data_folder)
             
             slices = list()
+            
             for folder in folders: 
                 valid, form = self.is_slicefolder(folder)
                 if valid == True:
                     slices.append(folder)
+                    
+            for file in files:
+                if self.is_slicefile(file):
+                    slices.append(file)
             
             print_data = dict() 
             for slice in slices:
