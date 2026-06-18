@@ -145,19 +145,22 @@ class FileManager:
             folders = self.get_subfolder(self.data_folder)
             files = self.get_files(self.data_folder)
             
-            slices = list()
+            slices = {
+                "folders": list(),
+                "files": list()
+            }
             
             for folder in folders: 
                 valid, form = self.is_slicefolder(folder)
                 if valid == True:
-                    slices.append(folder)
+                    slices["folders"].append(folder)
                     
             for file in files:
                 if self.is_slicefile(file):
-                    slices.append(file)
+                    slices["files"].append(file)
             
             print_data = dict() 
-            for slice in slices:
+            for slice in slices["folders"]:
                 name = os.path.basename(slice)
                 files = self.get_files(slice)
                 preview = self.get_previewimg(files)
@@ -170,6 +173,9 @@ class FileManager:
                         "preview": encoded,
                         "size": os.path.getsize(slice)
                     }  
+                    
+            for file in slices["files"]:
+                pass
             return print_data
         except Exception as e:
             print(f"get_print_data error: {str(e)}")

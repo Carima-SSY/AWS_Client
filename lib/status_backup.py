@@ -27,33 +27,13 @@ SENSOR_STATUS = {
         "target": -1
     },
     "engine": {
-        "one":{
-            "connected": 0,
-            "led":{
-                "on": 0,
-                "temp": 0
-            },
-            "active-time": 0,
-            "expired-time": 0
-        },
-        "left":{
-            "connected": 0,
-            "led":{
-                "on": 0,
-                "temp": 0
-            },
-            "active-time": 0,
-            "expired-time": 0
-        },
-        "right":{
-            "connected": 0,
-            "led":{
-                "on": 0,
-                "temp": 0
-            },
-            "active-time": 0,
-            "expired-time": 0
-        },
+        "connected": 0,
+        "ledon": 0,
+        "ledtemp": {
+            "left": -1,
+            "right": -1,
+            "one": -1
+        }
     },
     "environment":{
         "connected": 0,
@@ -79,11 +59,6 @@ DEVICE_STATUS = {
     "selected":{
         "data": [],
         "recipe": "-"
-    },
-    "time":{
-        "idle": 0,
-        "printing": 0,
-        "error": 0
     }
 }
 
