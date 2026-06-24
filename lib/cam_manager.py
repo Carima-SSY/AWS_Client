@@ -81,6 +81,12 @@ class CamManager:
             ret, frame = self.capture.read()
             return frame if ret else None
 
+    def exists_cam_folder(self, sub_folder) -> bool:
+        return os.path.exists(os.path.join(self.cam_folder, sub_folder))
+
+    def create_sub_folder(self, sub_folder) -> None:
+        os.makedirs(os.path.join(self.cam_folder, sub_folder), exist_ok=True)
+
     def save_image(self, sub_folder):
         frame = self._get_frame()
         if frame is None: return None
