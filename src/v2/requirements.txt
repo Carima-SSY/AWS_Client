@@ -1,0 +1,19 @@
+numpy==2.2.6
+opencv-python==4.12.0.88
+paho-mqtt==2.1.0
+Pillow==11.2.1
+pyinstaller==6.22.3
+requests==2.32.3
+xmltodict==1.0.2
+
+# Raspberry Pi CSI 카메라 전용(lib/cam_manager.py, Picamera2 -> Picamera -> OpenCV
+# 순으로 폴백). pip의 환경 마커(PEP 508)에는 "라즈베리파이"를 직접 가리키는 조건이
+# 없어서, 라즈베리파이 OS가 쓰는 CPU 아키텍처(armv6l=Pi Zero/1, armv7l=32비트 Pi
+# 2/3/4, aarch64=64비트 Pi OS)로 대신 판별한다 — 다른 ARM Linux 보드에서도 조건은
+# 맞을 수 있지만, 이 프로젝트의 배포 대상이 라즈베리파이뿐이라 문제없음. 조건에
+# 안 맞는 환경(mac/Windows/x86 Linux)에서는 pip install 시 이 두 패키지가 자동으로
+# 건너뛰어진다 — import 실패 시 OpenCV로 폴백하는 코드와도 일관됨. picamera2는
+# libcamera 시스템 바인딩이 필요해 그래도 설치가 실패할 수 있으며, 그 경우
+# 라즈베리파이 OS에서 `sudo apt install -y python3-picamera2`로 설치하는 것을 권장.
+picamera2==0.3.38; sys_platform == "linux" and (platform_machine == "armv6l" or platform_machine == "armv7l" or platform_machine == "aarch64")
+picamera==1.13; sys_platform == "linux" and (platform_machine == "armv6l" or platform_machine == "armv7l" or platform_machine == "aarch64")
