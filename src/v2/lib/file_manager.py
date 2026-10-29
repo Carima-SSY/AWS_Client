@@ -424,7 +424,7 @@ class FileManager:
             return False
         
     def add_print_recipe(self, name: str, encoded_content: str):
-        if self.device_type != "X1" or self.device_type != "DM400":
+        if self.device_type not in ("X1", "DM400"):
             return False
         
         recipe_file_path = os.path.join(self.recipe_folder, name)
@@ -437,7 +437,7 @@ class FileManager:
             f.write(decoded_content)    
             
     def delete_print_recipe(self, name: str):
-        if self.device_type != "X1" or self.device_type != "DM400":
+        if self.device_type not in ("X1", "DM400"):
             return False
         
         recipe_file_path = os.path.join(self.recipe_folder, name)

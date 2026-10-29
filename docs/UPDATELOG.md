@@ -10,18 +10,19 @@
 | 2 | JSON 파일 안전 입출력 | 원자적 쓰기와 파일별 Lock으로, 스레드끼리 동시에 접근해도 빈 파일을 읽지 않게 했다(`Expecting value` 오류 해결). |
 | 3 | 업로드 대기 목록 유실 방지 | 업로드가 끝난 항목만 목록에서 빼서, 업로드 중에 추가된 로그·출력 이력이 사라지지 않는다. |
 | 4 | 스레드 루프 예외 처리 | 예외가 나도 주기대로 쉬고, traceback으로 발생 위치를 출력한다. |
+| 5 | 레시피 추가·삭제 조건 수정 | 항상 참이던 장비 타입 조건을 고쳐, X1/DM400에서 레시피 삭제가 실제로 동작한다. |
 
 ### 변경 파일
 
 | 파일 | v1 → v2 | 관련 기능 |
 |---|---|---|
-| `lib/file_manager.py` | 395줄 → 449줄 | 1, 2, 3 |
+| `lib/file_manager.py` | 395줄 → 449줄 | 1, 2, 3, 5 |
 | `lib/json_file.py` | **신규** (85줄) | 2 |
 | `lib/log_manager.py` | 41줄 → 37줄 | 2 |
 | `lib/status_manager.py` | 114줄 → 109줄 | 2 |
 | `AWSClientApp.py` | 552줄 → 554줄 | 2, 3, 4 |
 
-그 외 파일(`lib/aws.py`, `lib/cam_manager.py`, `lib/status.py`, `lib/img_process.py`, `requirements.txt`, `client-config.json`, `test/` 전체)은 v1과 같다. 새 의존성은 없다. 모두 표준 라이브러리(`zipfile`, `io`, `tempfile`, `threading`, `traceback`)로 구현했다.
+그 외 파일(`lib/aws.py`, `lib/cam_manager.py`, `lib/status.py`, `lib/status_backup.py`, `lib/img_process.py`, `requirements.txt`, `client-config.json`, `test/` 전체)은 v1과 같다. 새 의존성은 없다. 모두 표준 라이브러리(`zipfile`, `io`, `tempfile`, `threading`, `traceback`)로 구현했다.
 
 ---
 
@@ -55,7 +56,7 @@ def get_slice_mode(self, ext: str):
     return SLICE_FORMAT_MODE_BY_DEVICE.get(self.device_type, {}).get(ext.lower())
 ```
 
-이 매핑이 v1의 `is_slicefolder()`/`is_slicefile()`를 대신한다. v1의 두 함수는 이름에 확장자 문자열이 들어 있는지만 검사했다.
+이 매핑이 v1의 `is_slicefolder()`/`is_slicefile()`를 대신한다. v1의 두 함수는 이름에 확장자 문자열이 들어 있는지만 검사했다. 두 함수는 v2에서 삭제했다. 두 함수가 쓰던 `SLICE_FORMAT` 상수는 남아 있지만 더 이상 쓰는 곳이 없다.
 
 ### 1-2. 파일형 슬라이스 정보 추출 — `get_filetype_slice_data(path)`
 
@@ -70,6 +71,7 @@ def get_slice_mode(self, ext: str):
 
 - zip 내부의 preview는 파일 경로 없이 바이트로만 읽힌다. 그래서 바이트 데이터를 받아 리사이즈하고 WEBP base64로 인코딩하는 함수를 따로 두었다.
 - 기존 `encode_previewimg(file, width)`는 파일을 읽어 이 함수에 넘기는 래퍼가 되었다.
+- `encode_previewimg`에 주석으로 남아 있던 예전 방식(임시 `output.webp` 파일에 저장 후 읽기) 코드는 지웠다.
 
 ### 1-4. 폴더 실제 용량 계산 — `get_folder_size(path)`
 
@@ -82,6 +84,12 @@ def get_slice_mode(self, ext: str):
 - **동작 변경 (데이터 손실 방지)**
   - v1: preview, idx/gcode가 없는 폴더형 슬라이스를 발견하면 `shutil.rmtree()`로 **바로 삭제**했다.
   - v2: 삭제하지 않고 **목록에서만 제외**한다.
+- **동작 변경 (매핑에 없는 기종) — 주의**
+  - v1: 장비 타입과 관계없이, 이름에 슬라이스 확장자가 들어 있는 폴더는 모두 목록에 넣었다.
+  - v2: `SLICE_FORMAT_MODE_BY_DEVICE`에 없는 장비 타입은 `get_slice_mode()`가 항상 `None`이다. 그래서 **슬라이스 목록이 비게 된다.**
+  - 대상 예: `DM4KH`, `DM4KDS`, `DM4KRS`, `DM4KBD`, `X1PRO`, `DM400PRO` 등 매핑에 없는 타입으로 설정된 장비
+  - 이런 장비를 v2로 올리려면 먼저 매핑에 해당 타입을 추가해야 한다.
+  - 레시피(`get_print_recipe`)와 장비 설정(`get_device_setting`)은 v1부터 같은 8개 타입만 처리하므로 이 부분은 v1과 같다.
 
 ### 1-6. 슬라이스 수신 — `add_print_data()`
 
@@ -89,11 +97,13 @@ def get_slice_mode(self, ext: str):
 - `"file"` 모드면 받은 바이트를 압축 해제 없이 그대로 파일로 저장한다.
 - 그 외(폴더형, 또는 매핑에 없는 확장자)는 v1과 같이 zip을 풀어 폴더로 만든다. 안쪽 폴더가 하나뿐이면 그 내용을 한 단계 위로 올린다.
 - v1은 모든 데이터를 zip으로 간주해 항상 압축을 풀었다.
+- `.zip` 접미사는 대소문자 구분 없이 뗀다. v1은 `.zip`(소문자)만 뗐다.
 
 ### 1-7. 슬라이스 삭제 — `delete_print_data()`
 
 - 대상이 폴더면 `shutil.rmtree()`, 파일이면 `os.remove()`로 삭제한다.
 - v1은 항상 `shutil.rmtree()`를 불렀다. 파일형 슬라이스를 삭제하면 예외가 나는 구조였다. 당시엔 파일형 슬라이스가 저장되지 않아 드러나지 않았을 뿐이다.
+- **동작 변경:** 대상이 없으면 v2는 아무것도 하지 않고 `True`를 돌려준다. v1은 `rmtree()` 예외가 나서 `False`를 돌려줬다.
 
 ---
 
@@ -118,6 +128,7 @@ v1은 `open(..., 'w')`로 썼다. 이 방식은 파일을 먼저 0바이트로 �
 
 **세부 동작**
 - 기본 직렬화 옵션은 v1과 같다(`ensure_ascii=False`, `indent=4`).
+  - 예외: v1의 로그 파일 생성(`create_log_file`)만 `ensure_ascii`를 지정하지 않아 한글 등을 `\uXXXX`로 썼다. v2는 다른 파일과 같이 그대로 쓴다. 이후 로그 추가는 v1도 `ensure_ascii=False`였으므로 실제 영향은 없다.
 - 바꿔치기 후에도 기존 파일 권한을 유지한다(임시 파일 기본값 0600 → 기존 권한, 새 파일은 0644).
 - Windows에서는 다른 프로세스가 대상 파일을 열고 있으면 `os.replace()`가 `PermissionError`를 낸다. 이 경우 50ms 간격으로 최대 10회 재시도한다.
 - 실패하면 임시 파일을 지운다.
@@ -185,6 +196,25 @@ v1의 `status_handler`·`file_handler`·`cam_handler`는 `try` 블록 안에만 
 
 ---
 
+## 5. 레시피 추가·삭제 조건 수정 (`lib/file_manager.py`)
+
+### 배경
+
+`add_print_recipe`·`delete_print_recipe`는 X1/DM400(레시피를 `.xml` 파일로 관리하는 기종)에서만 동작하도록 장비 타입을 검사한다. 그런데 v1의 조건은 `device_type != "X1" or device_type != "DM400"`이었다. 이 조건은 어떤 값이든 항상 참이다. 그래서 **모든 장비에서 레시피 삭제가 실행되지 않고 바로 `False`를 돌려줬다.** 웹에서 레시피 삭제 명령을 보내도 장비의 레시피 파일은 그대로 남았다.
+
+### 변경
+
+- 두 함수의 조건을 `device_type not in ("X1", "DM400")`으로 고쳤다.
+- 이제 X1/DM400에서는 레시피가 실제로 삭제된다. 그 외 기종은 v1과 같이 `False`를 돌려주고 아무것도 하지 않는다.
+- `add_print_recipe`는 지금 호출하는 곳이 없다. 레시피 수신은 `save_json_to_xml`이 처리한다. 같은 조건이라 함께 고쳤다.
+
+### 참고
+
+`request_file_deletion`은 `delete_print_recipe`의 결과와 관계없이 항상 `True`를 돌려준다(v1과 같음). 삭제 실패가 응답에 드러나지 않는다.
+
+---
+
 ## 운영 참고
 
+- **v2로 올리기 전에 장비 타입을 확인한다.** `client-config.json`의 `device.type`이 `SLICE_FORMAT_MODE_BY_DEVICE`에 있는 8개(X1, DM400, DM4K, IML, IML16K, IMDC, IMD, ZENESIS) 중 하나가 아니면 v2에서 슬라이스 목록이 비게 된다(1-5 참고). 해당 장비는 매핑에 타입을 추가한 뒤 올린다.
 - 이력 폴더(`dir.history`)의 `print-history.json`과 로그 폴더(`dir.log`)의 `device-log.json`은 앱이 처음에 만들어 주지 않는다. 설치할 때 `{"updated-list": []}` 내용으로 미리 만들어 둬야 한다. 없으면 업로드 목록을 읽지 못해 업로드를 건너뛴다.
