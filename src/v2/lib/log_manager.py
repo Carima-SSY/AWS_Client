@@ -31,7 +31,7 @@ class LogManager:
             json_file.write_json(file, current_data)
 
     def save_log_file(self, file: str):
-        # file_handler(file_manager.reset_device_log_updatelist)와 같은 Lock 안에서 읽고-고쳐-쓴다
+        # upload_handler(file_manager.reset_device_log_updatelist)와 같은 Lock 안에서 읽고-고쳐-쓴다
         json_file.update_json(
             os.path.join(self.log_folder, "device-log.json"),
             lambda device_log: device_log["updated-list"].append(os.path.basename(file)),

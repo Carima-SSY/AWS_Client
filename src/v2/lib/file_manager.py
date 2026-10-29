@@ -1,4 +1,4 @@
-import os, io, json , base64, time, glob
+import os, io, json , base64, time, glob, uuid
 from PIL import Image
 import zipfile
 import shutil
@@ -9,20 +9,36 @@ from collections import OrderedDict
 
 SLICE_FORMAT = (".slice",".crmaslice",".cws",".cmz")
 
+# 기종 계열(STATIC/config의 기종별 file 설정 기준).
+# - XML 계열: 슬라이서가 슬라이스를 폴더로 내보내고, 레시피·장비 설정은 xml 파일
+# - CFG 계열: .crmaslice/.cws/.cmz를 압축 파일 하나로 내보내고, 레시피는 resin.cfg
+XML_DEVICE_TYPES = ("X1", "X1PRO", "DM400", "DM400PRO")
+CFG_DEVICE_TYPES = (
+    "DM4K", "DM4KH", "DM4KDS", "DM4KRS", "DM4KBD", "DM4KULTRA",
+    "IML", "IML16K", "IML16KULTRA", "IMD", "IMDC", "ZENESIS", "BISON2000",
+)
+# 출력 대기열(add/change/delete-printing)이 있는 기종
+PRINT_QUEUE_DEVICE_TYPES = ("DM400", "DM400PRO")
+
 # 슬라이스 확장자별로 device_type에 따라 "폴더로 배치"할지("folder") "파일 그대로
-# 처리"할지("file")가 갈림. X1/DM400은 슬라이서가 폴더로 내보내고, 나머지 기종은
-# .crmaslice/.cws/.cmz를 압축 파일 하나로 내보냄(get_print_recipe/get_device_setting의
-# 기존 device_type 분기와 동일한 기준을 사용).
+# 처리"할지("file")가 갈림. 매핑에 없는 기종은 슬라이스 목록이 비므로, 새 기종은
+# 위 계열 목록에 추가한다.
+_FOLDER_SLICE_MODE = {".slice": "folder", ".crmaslice": "folder"}
+_FILE_SLICE_MODE = {".slice": "folder", ".crmaslice": "file", ".cws": "file", ".cmz": "file"}
 SLICE_FORMAT_MODE_BY_DEVICE = {
-    "X1":      {".slice": "folder", ".crmaslice": "folder"},
-    "DM400":   {".slice": "folder", ".crmaslice": "folder"},
-    "DM4K":    {".slice": "folder", ".crmaslice": "file", ".cws": "file", ".cmz": "file"},
-    "IML":     {".slice": "folder", ".crmaslice": "file", ".cws": "file", ".cmz": "file"},
-    "IML16K":  {".slice": "folder", ".crmaslice": "file", ".cws": "file", ".cmz": "file"},
-    "IMDC":    {".slice": "folder", ".crmaslice": "file", ".cws": "file", ".cmz": "file"},
-    "IMD":     {".slice": "folder", ".crmaslice": "file", ".cws": "file", ".cmz": "file"},
-    "ZENESIS": {".slice": "folder", ".crmaslice": "file", ".cws": "file", ".cmz": "file"},
+    **{t: _FOLDER_SLICE_MODE for t in XML_DEVICE_TYPES},
+    **{t: _FILE_SLICE_MODE for t in CFG_DEVICE_TYPES},
 }
+
+def is_supported_device(device_type) -> bool:
+    return device_type in SLICE_FORMAT_MODE_BY_DEVICE
+
+# 웹에서 받은 슬라이스를 다 풀 때까지 두는 임시 이름. 확장자가 없어 슬라이스 목록에 잡히지 않는다.
+PARTIAL_PREFIX = ".awsclient-partial-"
+
+# 슬라이스 목록 캐시: 같은 슬라이스의 미리보기를 매초 다시 만들지 않는다. 폴더/파일의 수정 시각이
+# 그대로면 이전 결과를 쓰고, 수정 시각을 놓치는 파일시스템에 대비해 이 시간이 지나면 다시 만든다.
+SLICE_CACHE_MAX_AGE = 60  # seconds
 
 class FileManager:
     def __init__(self, device_type, device_number, data_folder, recipe_folder, setting_folder, log_folder, history_folder, cam_folder):
@@ -39,6 +55,24 @@ class FileManager:
         self.print_recipe = dict()
         self.device_setting = dict()
 
+        # 경로 → (서명, 캐시 시각, 결과). 결과가 None이면 유효하지 않은 슬라이스
+        self._slice_cache = dict()
+
+        self.clean_partial_slices()
+
+    def clean_partial_slices(self):
+        """지난 실행에서 압축을 풀다 멈춘 임시 슬라이스를 지운다."""
+        try:
+            for entry in os.listdir(self.data_folder):
+                if entry.startswith(PARTIAL_PREFIX):
+                    path = os.path.join(self.data_folder, entry)
+                    if os.path.isdir(path):
+                        shutil.rmtree(path, ignore_errors=True)
+                    else:
+                        os.remove(path)
+        except Exception as e:
+            print(f"clean_partial_slices error: {str(e)}")
+
     def get_slice_mode(self, ext: str):
         return SLICE_FORMAT_MODE_BY_DEVICE.get(self.device_type, {}).get(ext.lower())
 
@@ -49,7 +83,7 @@ class FileManager:
             return False
     
     def is_settingfile(self, file: str):
-        if self.device_type == "X1" or self.device_type == "DM400":
+        if self.device_type in XML_DEVICE_TYPES:
             if "SaveFile.xml" in file:
                 return True
             else: 
@@ -177,12 +211,41 @@ class FileManager:
             print(f"get_filetype_slice_data error: {str(e)}")
             return None
 
+    def get_foldertype_slice_data(self, folder: str):
+        slice_files = self.get_files(folder)
+        preview = self.get_previewimg(slice_files)
+        if len(preview) == 0 or (self.get_idx_file(slice_files) is None and self.get_gcode_file(slice_files) is None):
+            # 유효하지 않은 슬라이스 - 목록에서만 제외하고 파일은 건드리지 않음
+            return None
+
+        return {
+            "preview": self.encode_previewimg(preview[0], 120),
+            "size": self.get_folder_size(folder)
+        }
+
+    def _get_cached_slice_data(self, path: str, build, seen: set):
+        """path의 수정 시각·크기가 그대로이고 캐시가 오래되지 않았으면 이전 결과를 쓴다.
+        미리보기 인코딩·폴더 용량 계산을 슬라이스가 바뀔 때만 하기 위함."""
+        seen.add(path)
+        st = os.stat(path)
+        signature = (st.st_mtime_ns, st.st_size)
+        now = time.time()
+
+        cached = self._slice_cache.get(path)
+        if cached is not None and cached[0] == signature and now - cached[1] < SLICE_CACHE_MAX_AGE:
+            return cached[2]
+
+        data = build(path)
+        self._slice_cache[path] = (signature, now, data)
+        return data
+
     def get_print_data(self):
         try:
             folders = self.get_subfolder(self.data_folder)
             files = self.get_files(self.data_folder)
 
             print_data = dict()
+            seen = set()
 
             # 폴더형 슬라이스(device_type상 'folder' 모드인 확장자만 처리)
             for folder in folders:
@@ -191,16 +254,11 @@ class FileManager:
                 if self.get_slice_mode(ext) != "folder":
                     continue
 
-                slice_files = self.get_files(folder)
-                preview = self.get_previewimg(slice_files)
-                if len(preview) == 0 or (self.get_idx_file(slice_files) is None and self.get_gcode_file(slice_files) is None):
-                    # 유효하지 않은 슬라이스 - 목록에서만 제외하고 파일은 건드리지 않음
+                data = self._get_cached_slice_data(folder, self.get_foldertype_slice_data, seen)
+                if data is None:
                     continue
 
-                print_data[name] = {
-                    "preview": self.encode_previewimg(preview[0], 120),
-                    "size": self.get_folder_size(folder)
-                }
+                print_data[name] = data
 
             # 파일형 슬라이스(device_type상 'file' 모드인 확장자만 처리, 압축 해제 없음)
             for file in files:
@@ -209,11 +267,16 @@ class FileManager:
                 if self.get_slice_mode(ext) != "file":
                     continue
 
-                data = self.get_filetype_slice_data(file)
+                data = self._get_cached_slice_data(file, self.get_filetype_slice_data, seen)
                 if data is None:
                     continue
 
                 print_data[name] = data
+
+            # 사라진 슬라이스의 캐시는 버린다
+            for path in list(self._slice_cache):
+                if path not in seen:
+                    del self._slice_cache[path]
 
             return print_data
         except Exception as e:
@@ -221,8 +284,8 @@ class FileManager:
             return None
         
     def get_print_recipe(self):
-        try: 
-            if self.device_type == "X1" or self.device_type == "DM400":
+        try:
+            if self.device_type in XML_DEVICE_TYPES:
                 files = self.get_files(self.recipe_folder)
                 recipe_dic = dict()
                 for file in files:
@@ -231,8 +294,8 @@ class FileManager:
                             "content": self.convert_xml_to_json(file),
                             "size": os.path.getsize(file)
                         }
-                return True, recipe_dic    
-            elif self.device_type in ["DM4K", "IML", "IML16K", "IMDC", "IMD", "ZENESIS"]:
+                return True, recipe_dic
+            elif self.device_type in CFG_DEVICE_TYPES:
                 recipe_dic = dict()
                 recipe_dic["recipe-list"] = self.extract_resins(os.path.join(self.recipe_folder, "resin.cfg"))
                 return True, recipe_dic
@@ -243,14 +306,14 @@ class FileManager:
             return False, None
         
     def get_device_setting(self):
-        if self.device_type == "X1" or self.device_type == "DM400":
+        if self.device_type in XML_DEVICE_TYPES:
             files = self.get_files(self.setting_folder)
             setting_dic = dict()
             for file in files:
                 if self.is_settingfile(file):
                     setting_dic = self.convert_xml_to_json(file)
-            return True, setting_dic    
-        elif self.device_type in ["DM4K", "IML", "IML16K", "IMDC", "IMD", "ZENESIS"]:
+            return True, setting_dic
+        elif self.device_type in CFG_DEVICE_TYPES:
             return True, dict()
         else:
             return False, None
@@ -389,26 +452,54 @@ class FileManager:
         _, ext = os.path.splitext(logical_name)
         mode = self.get_slice_mode(ext)
 
-        if mode == "file":
-            # 파일형 슬라이스: 압축 해제 없이 받은 바이트를 그대로 파일로 저장
-            file_path = os.path.join(self.data_folder, logical_name)
-            with open(file_path, "wb") as f:
-                f.write(decoded_bytes)
+        target_path = os.path.join(self.data_folder, logical_name)
+        # 임시 이름으로 끝까지 만든 뒤 한 번에 제자리로 옮긴다. 만드는 도중의 슬라이스가
+        # 목록·장비에 보이지 않고, 중간에 실패하면 임시본만 지워진다.
+        temp_path = os.path.join(self.data_folder, f"{PARTIAL_PREFIX}{uuid.uuid4().hex}")
+
+        try:
+            if mode == "file":
+                # 파일형 슬라이스: 압축 해제 없이 받은 바이트를 그대로 파일로 저장
+                with open(temp_path, "wb") as f:
+                    f.write(decoded_bytes)
+                self._replace_path(temp_path, target_path)
+                return
+
+            # 폴더형 슬라이스(매핑에 없는 경우도 기존과 동일하게 폴더형으로 처리)
+            with zipfile.ZipFile(io.BytesIO(decoded_bytes)) as zip_ref:
+                zip_ref.extractall(temp_path)
+
+            # 압축 안에 폴더가 하나뿐이면 그 폴더를 슬라이스로 쓴다(한 단계 위로 올리는 기존 동작과 같은 결과)
+            source_path = temp_path
+            items = os.listdir(temp_path)
+            if len(items) == 1 and os.path.isdir(os.path.join(temp_path, items[0])):
+                source_path = os.path.join(temp_path, items[0])
+
+            self._replace_path(source_path, target_path)
+        finally:
+            if os.path.isdir(temp_path):
+                shutil.rmtree(temp_path, ignore_errors=True)
+            elif os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    def _replace_path(self, source_path: str, target_path: str):
+        """source를 target 자리로 옮긴다. 같은 이름이 이미 있으면 새 것으로 바꾼다."""
+        if not os.path.exists(target_path):
+            os.replace(source_path, target_path)
             return
 
-        # 폴더형 슬라이스(매핑에 없는 경우도 기존과 동일하게 폴더형으로 처리)
-        data_file_path = os.path.join(self.data_folder, logical_name)
-
-        with zipfile.ZipFile(io.BytesIO(decoded_bytes)) as zip_ref:
-            zip_ref.extractall(data_file_path)  # 압축 해제할 폴더 지정
-
-        items = os.listdir(data_file_path)
-        if len(items) == 1 and os.path.isdir(os.path.join(data_file_path, items[0])):
-            inner_folder = os.path.join(data_file_path, items[0])
-
-            for item in os.listdir(inner_folder):
-                shutil.move(os.path.join(inner_folder, item), data_file_path)
-            os.rmdir(inner_folder)
+        # 기존 것을 임시 이름으로 비켜 두고 새 것을 넣은 뒤 지운다(빈 시간이 거의 없음)
+        old_path = os.path.join(self.data_folder, f"{PARTIAL_PREFIX}{uuid.uuid4().hex}")
+        os.replace(target_path, old_path)
+        try:
+            os.replace(source_path, target_path)
+        except Exception:
+            os.replace(old_path, target_path)  # 실패하면 기존 것을 되돌린다
+            raise
+        if os.path.isdir(old_path):
+            shutil.rmtree(old_path, ignore_errors=True)
+        else:
+            os.remove(old_path)
 
     def delete_print_data(self, name: str):
         data_path = os.path.join(self.data_folder, name)
@@ -424,7 +515,7 @@ class FileManager:
             return False
         
     def add_print_recipe(self, name: str, encoded_content: str):
-        if self.device_type not in ("X1", "DM400"):
+        if self.device_type not in XML_DEVICE_TYPES:
             return False
         
         recipe_file_path = os.path.join(self.recipe_folder, name)
@@ -437,7 +528,7 @@ class FileManager:
             f.write(decoded_content)    
             
     def delete_print_recipe(self, name: str):
-        if self.device_type not in ("X1", "DM400"):
+        if self.device_type not in XML_DEVICE_TYPES:
             return False
         
         recipe_file_path = os.path.join(self.recipe_folder, name)

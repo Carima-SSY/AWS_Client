@@ -6,6 +6,10 @@ import os
 import base64
 import requests
 
+# HTTP 요청 제한 시간(초): (연결, 응답 대기). 응답 대기는 데이터가 오가는 사이의 최대 공백이라
+# 큰 파일 업로드·다운로드도 끊기지 않는다. 없으면 응답이 없을 때 호출한 스레드가 영영 멈춘다.
+HTTP_TIMEOUT = (10, 60)
+
 class ToIoTCore:
     def __init__(self, endpoint, client_id, topic, ca_cert, cert_file, private_key):
         """
@@ -80,26 +84,26 @@ class ToAPIG:
 
     def get_presigned_url(self, devtype, devnum, method, data, name=None):
         if name == None:
-            response = requests.get(f"{self.endpoint}/api/file/{devtype}/{devnum}/{method}/{data}")
+            response = requests.get(f"{self.endpoint}/api/file/{devtype}/{devnum}/{method}/{data}", timeout=HTTP_TIMEOUT)
         else:
-            response = requests.get(f"{self.endpoint}/api/file/{devtype}/{devnum}/{method}/{data}/{name}")
+            response = requests.get(f"{self.endpoint}/api/file/{devtype}/{devnum}/{method}/{data}/{name}", timeout=HTTP_TIMEOUT)
         # print(response.json())
         if response.status_code == 200: return response.json()
         else: return None
         
     def get_file_from_s3(self, get_url):
-        response = requests.get(url=get_url)
+        response = requests.get(url=get_url, timeout=HTTP_TIMEOUT)
         print(f"RESPONSE OF GET FILE:{response}")
         if response.status_code == 200: return response.json()
         else: return None
         
     def put_file_to_s3(self, put_url, data):
-        response = requests.put(url=put_url, json=data)
+        response = requests.put(url=put_url, json=data, timeout=HTTP_TIMEOUT)
         if response.status_code == 200: return True
         else: return False
         
     def put_data_to_s3(self, put_url, data):
-        response = requests.put(url=put_url, data=data)
+        response = requests.put(url=put_url, data=data, timeout=HTTP_TIMEOUT)
         if response.status_code == 200: return True
         else: return False
 
